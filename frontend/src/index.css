@@ -75,6 +75,13 @@ body {
   to { transform: rotate(360deg); }
 }
 
+@keyframes slide-blur {
+  0% { transform: translateY(40px); filter: blur(8px); opacity: 0; }
+  10% { transform: translateY(0); filter: blur(0); opacity: 1; }
+  90% { transform: translateY(0); filter: blur(0); opacity: 1; }
+  100% { transform: translateY(-40px); filter: blur(8px); opacity: 0; }
+}
+
 /* Utility classes */
 .fade-up    { animation: fadeUp 0.3s ease forwards; }
 .mono       { font-family: 'JetBrains Mono', monospace; }

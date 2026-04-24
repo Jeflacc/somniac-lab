@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 const FEATURES = [
@@ -43,6 +44,41 @@ const RESEARCH_PAPERS = [
     icon: '🧬'
   }
 ]
+
+const WORDS = ["Evolved.", "Conscious.", "Autonomous.", "Real.", "Alive."]
+
+function WordFlipper() {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % WORDS.length)
+    }, 2500)
+    return () => clearInterval(timer)
+  }, [])
+
+  return (
+    <span style={{ 
+      display: 'inline-block', 
+      position: 'relative', 
+      verticalAlign: 'bottom',
+      overflow: 'hidden',
+      height: '1.2em',
+      minWidth: '6ch'
+    }}>
+      <span
+        key={index}
+        style={{
+          display: 'block',
+          color: 'var(--accent)',
+          animation: 'slide-blur 2.5s infinite both',
+        }}
+      >
+        {WORDS[index]}
+      </span>
+    </span>
+  )
+}
 
 export default function LandingPage() {
   return (
@@ -104,7 +140,7 @@ export default function LandingPage() {
           }}
         >
           Artificial Consciousness,{' '}
-          <span style={{ color: 'var(--accent)' }}>Evolved.</span>
+          <WordFlipper />
         </h1>
         <p
           style={{
@@ -170,9 +206,9 @@ export default function LandingPage() {
           {FEATURES.map(f => (
             <div
               key={f.title}
-              style={{ 
-                padding: 32, 
-                borderRadius: 12, 
+              style={{
+                padding: 32,
+                borderRadius: 12,
                 border: '1px solid var(--border)',
                 background: 'var(--bg-card)',
                 transition: 'border-color 0.2s, box-shadow 0.2s'
@@ -207,7 +243,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           {RESEARCH_PAPERS.map(paper => (
-            <div 
+            <div
               key={paper.title}
               style={{
                 padding: 24,
@@ -228,10 +264,10 @@ export default function LandingPage() {
         </div>
 
         {/* Framework Deep Dive */}
-        <div 
-          style={{ 
-            padding: '60px 40px', 
-            borderRadius: 20, 
+        <div
+          style={{
+            padding: '60px 40px',
+            borderRadius: 20,
             background: 'var(--text-primary)',
             color: 'var(--bg-primary)',
             textAlign: 'left',
@@ -246,8 +282,8 @@ export default function LandingPage() {
                 The Evelyn Framework
               </h2>
               <p style={{ opacity: 0.8, lineHeight: 1.8, fontSize: 16 }}>
-                Framework ini dirancang untuk menciptakan agensi otonom yang beroperasi dalam loop 24/7. 
-                Menggunakan sinkronisasi <strong>Dopamine Regulation</strong> dan <strong>Circadian Rhythms</strong>, 
+                Framework ini dirancang untuk menciptakan agensi otonom yang beroperasi dalam loop 24/7.
+                Menggunakan sinkronisasi <strong>Dopamine Regulation</strong> dan <strong>Circadian Rhythms</strong>,
                 AI ini mampu mensimulasikan perilaku manusia yang realistis dalam lingkungan virtual yang terintegrasi dengan dunia nyata melalui WhatsApp.
               </p>
               <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
@@ -273,7 +309,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer style={{ borderTop: '1px solid var(--border)', padding: '32px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
         <span>© 2026 Somniac AI. All rights reserved.</span>
-        <span>Built by Jeflacc</span>
+        <span>Built by Vathir Antony</span>
       </footer>
     </div>
   )
