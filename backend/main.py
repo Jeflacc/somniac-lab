@@ -102,15 +102,22 @@ active_wa_handlers: dict[int, WhatsAppHandler] = {}
 wa_in_queue = asyncio.Queue()
 
 async def process_wa_queue():
+    """
+    Incoming WA messages go through house.enqueue_wa() so the AI has to
+    physically 'pick up the phone' (check_wa chore) before replying.
+    """
     while True:
         try:
             user_id, text, message = await wa_in_queue.get()
+            if not text.strip():
+                wa_in_queue.task_done()
+                continue
             db = SessionLocal()
             try:
-                user = db.query(models.User).filter(models.User.id == user_id).first()
-                if user:
-                    req = ChatRequest(message=text)
-                    await chat_endpoint(req, user, db, source="whatsapp")
+                house = HouseManager(user_id, db)
+                house.enqueue_wa(text, message)
+                logger.info(f"[WA QUEUE] User {user_id}: '{text[:50]}' → queued to check_wa chore")
+                await broadcast_to_user(user_id, {"type": "system", "text": f"[WhatsApp masuk]: {text[:80]}"})
             except Exception as e:
                 logger.error(f"[WA QUEUE] Error: {e}")
             finally:
@@ -204,6 +211,7 @@ async def state_broadcast_loop():
 
 async def house_tick_loop():
     await asyncio.sleep(5)
+    _last_holding_phone: dict[int, bool] = {}  # track per-user presence
     while True:
         await asyncio.sleep(10)
         db = SessionLocal()
@@ -218,6 +226,63 @@ async def house_tick_loop():
                 if user.id in active_ws and active_ws[user.id]:
                     await broadcast_to_user(user.id, {"type": "house_state", **house.get_house_state()})
 
+                # ── Mark read: AI opened WA → send read receipt ──
+                if events.get("mark_read_wa_message"):
+                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                        try:
+                            active_wa_handlers[user.id].mark_read(events["mark_read_wa_message"])
+                            logger.info(f"[HOUSE] User {user.id}: mark_read sent")
+                        except Exception as _e:
+                            logger.warning(f"[HOUSE] mark_read failed: {_e}")
+
+                # ── WhatsApp Presence: Online ↔ Offline based on holding phone ──
+                holding_now = events.get("holding_phone", False)
+                was_holding = _last_holding_phone.get(user.id, False)
+                if holding_now != was_holding:
+                    _last_holding_phone[user.id] = holding_now
+                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                        try:
+                            import threading
+                            handler = active_wa_handlers[user.id]
+                            threading.Thread(target=handler.set_presence, args=(holding_now,), daemon=True).start()
+                        except Exception as _pe:
+                            logger.warning(f"[HOUSE] set_presence failed: {_pe}")
+
+                # ── WA reply ready: AI finished reading, now trigger LLM ──
+                if events.get("wa_reply_ready") and events.get("wa_data"):
+                    wa_data = events["wa_data"]
+                    user_input = wa_data["user_input"]
+                    
+                    # Set typing indicator on WhatsApp
+                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                        try:
+                            active_wa_handlers[user.id].set_typing(True)
+                        except Exception:
+                            pass
+                    
+                    async def async_wa_chat(u, text, uid):
+                        db_sess = SessionLocal()
+                        try:
+                            req = ChatRequest(message=text)
+                            await chat_endpoint(req, u, db_sess, source="whatsapp")
+                        except Exception as e:
+                            logger.error(f"[WA CHAT ERROR] {e}")
+                        finally:
+                            db_sess.close()
+                            # Notify house manager that reply was sent to unblock check_wa step
+                            db_house = SessionLocal()
+                            try:
+                                h = HouseManager(uid, db_house)
+                                h.notify_wa_reply_sent()
+                                h.save_state()
+                            except Exception:
+                                pass
+                            finally:
+                                db_house.close()
+                                
+                    asyncio.create_task(async_wa_chat(user, user_input, user.id))
+
+                # ── Chore completed — journal it and apply side effects ──
                 if events.get("chore_completed") and events.get("chore_completed_def"):
                     chore_def = events["chore_completed_def"]
                     journal_text = chore_def.get("journal_text")
@@ -233,6 +298,20 @@ async def house_tick_loop():
                     elif on_complete == "wake":
                         state.reset_state("wake")
 
+                # ── Boredom WA notif (e.g. "lagi main PS5 nih") ──
+                if events.get("wa_notif_text"):
+                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                        active_wa_handlers[user.id].send_natural_burst(events["wa_notif_text"])
+                        logger.info(f"[HOUSE] Boredom WA notif sent: {events['wa_notif_text']}")
+
+                # ── Laundry mood penalty ──
+                laundry_penalty = events.get("laundry_mood_penalty", 0.0)
+                if laundry_penalty > 0.0:
+                    tick_stress_bump = laundry_penalty * (10.0 / 3600.0)
+                    state.stress = min(1.0, state.stress + tick_stress_bump)
+                    state._evaluate_mood()
+
+                # ── Autonomous lifecycle triggers ──
                 if not state.is_sleeping and not house.current_chore_id and not house.chore_queue:
                     if state.hunger >= 0.65 and house.needs_eat():
                         house.enqueue_chore("eat")
@@ -242,37 +321,6 @@ async def house_tick_loop():
                         house.enqueue_chore("laundry")
                     elif house.boredom > 0.75:
                         house.enqueue_chore(random.choice(["play_console", "watch_tv", "wander"]))
-                        
-                if events.get("mark_read_wa_message"):
-                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
-                        active_wa_handlers[user.id].mark_read(events["mark_read_wa_message"])
-                        
-                if events.get("wa_reply_ready") and events.get("wa_data"):
-                    wa_data = events["wa_data"]
-                    user_input = wa_data["user_input"]
-                    req = ChatRequest(message=user_input)
-                    # We run this in a task so it doesn't block the house tick loop
-                    async def async_wa_chat(u, text):
-                        db_sess = SessionLocal()
-                        try:
-                            req = ChatRequest(message=text)
-                            await chat_endpoint(req, u, db_sess, source="whatsapp")
-                        except Exception as e:
-                            logger.error(f"[WA CHAT ERROR] {e}")
-                        finally:
-                            db_sess.close()
-                            # Notify house manager that reply was sent to unblock WA queue
-                            db_house = SessionLocal()
-                            try:
-                                h = HouseManager(u.id, db_house)
-                                h.notify_wa_reply_sent()
-                                h.save_state()
-                            except Exception as e:
-                                pass
-                            finally:
-                                db_house.close()
-                                
-                    asyncio.create_task(async_wa_chat(user, user_input))
                     
         except Exception as e:
             logger.error(f"[HOUSE TICK] {e}")
