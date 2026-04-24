@@ -129,7 +129,10 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative flex flex-col items-center justify-center text-center px-6 pt-40 pb-24 overflow-hidden">
-        <Meteors number={30} />
+        {/* Background Ambient Glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-accent opacity-[0.03] blur-[120px] rounded-full -z-10" />
+        
+        <Meteors number={30} className="-z-10" />
         <div className="mb-8">
           <EvelynEye size={72} animated />
         </div>
