@@ -9,6 +9,8 @@ import {
   Smartphone,
   TrendingUp
 } from 'lucide-react'
+import { AuroraBackground } from '@/components/ui/aurora-background'
+import { motion } from 'framer-motion'
 
 const FEATURES = [
   {
@@ -95,6 +97,7 @@ export default function LandingPage() {
       className="min-h-screen overflow-y-auto"
       style={{ background: 'var(--bg-primary)' }}
     >
+      <AuroraBackground showRadialGradient={true}>
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4"
         style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-primary)' }}
@@ -127,7 +130,13 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="flex flex-col items-center justify-center text-center px-6 pt-40 pb-24">
+      <section className="flex flex-col items-center justify-center text-center px-6 pt-40 pb-24 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="flex flex-col items-center"
+        >
         <div className="mb-8">
           <EvelynEye size={72} animated />
         </div>
@@ -204,6 +213,7 @@ export default function LandingPage() {
             Learn More
           </a>
         </div>
+        </motion.div>
       </section>
 
       {/* Features */}
@@ -315,8 +325,10 @@ export default function LandingPage() {
         </div>
       </section>
 
+      </AuroraBackground>
+
       {/* Footer */}
-      <footer style={{ borderTop: '1px solid var(--border)', padding: '32px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+      <footer style={{ borderTop: '1px solid var(--border)', padding: '32px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: 14, background: 'var(--bg-primary)', position: 'relative', zIndex: 10 }}>
         <span>© 2026 Somniac AI. All rights reserved.</span>
         <span>Built by Vathir Antony</span>
       </footer>
