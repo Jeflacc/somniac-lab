@@ -434,15 +434,24 @@ import jwt
 from auth import SECRET_KEY, ALGORITHM
 
 @app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket, token: str):
+async def websocket_endpoint(ws: WebSocket, token: str = None):
     await ws.accept()
+
+    # --- Validate token FIRST before doing anything ---
+    if not token:
+        logger.warning("[WS] Connection rejected: no token provided")
+        await ws.send_json({"type": "error", "msg": "Authentication required. Please log in."})
+        await ws.close(code=1008)
+        return
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
-            await ws.close(code=1008)
-            return
-    except Exception:
+            raise ValueError("No subject in token")
+    except Exception as e:
+        logger.warning(f"[WS] Connection rejected: invalid token — {e}")
+        await ws.send_json({"type": "error", "msg": "Invalid or expired token. Please log in again."})
         await ws.close(code=1008)
         return
 
@@ -450,6 +459,8 @@ async def websocket_endpoint(ws: WebSocket, token: str):
     user = db.query(models.User).filter(models.User.username == username).first()
     if not user:
         db.close()
+        logger.warning(f"[WS] Connection rejected: user '{username}' not found in DB")
+        await ws.send_json({"type": "error", "msg": "User not found."})
         await ws.close(code=1008)
         return
 
@@ -457,7 +468,7 @@ async def websocket_endpoint(ws: WebSocket, token: str):
     if user_id not in active_ws:
         active_ws[user_id] = set()
     active_ws[user_id].add(ws)
-    logger.info(f"[WS] New connection for user {username}. Total websockets: {len(active_ws[user_id])}")
+    logger.info(f"[WS] ✅ New connection for user '{username}' (id={user_id}). Total sockets: {len(active_ws[user_id])}")
 
     state = StateManager(user_id, db)
     house = HouseManager(user_id, db)
@@ -490,8 +501,8 @@ async def websocket_endpoint(ws: WebSocket, token: str):
 
             elif msg_type == "command":
                 cmd = data.get("command", "")
-                payload = data.get("payload")
-                req = CommandRequest(command=cmd, payload=payload)
+                payload_data = data.get("payload")
+                req = CommandRequest(command=cmd, payload=payload_data)
                 db = SessionLocal()
                 try:
                     result = await run_command_endpoint(req, user, db)
@@ -502,8 +513,9 @@ async def websocket_endpoint(ws: WebSocket, token: str):
                     db.close()
 
     except WebSocketDisconnect:
-        logger.info(f"[WS] Client disconnected for user {username}")
+        logger.info(f"[WS] Client disconnected: user '{username}'")
     except Exception as e:
-        logger.error(f"[WS] Error: {e}")
+        logger.error(f"[WS] Unexpected error for user '{username}': {e}")
     finally:
         active_ws[user_id].discard(ws)
+
