@@ -19,12 +19,38 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
 # Database & Auth
-from database import engine, Base, SessionLocal, get_db
+from database import engine, Base, SessionLocal, get_db, DB_PATH
 from auth import auth_router, get_current_user
 import models
 
 # Ensure tables exist
 Base.metadata.create_all(bind=engine)
+
+# ── Auto-migrate: add missing columns to existing DBs ──
+def auto_migrate():
+    """Safely add new columns that may not exist in older databases."""
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    existing = {row[1] for row in cursor.execute("PRAGMA table_info(ai_instances)").fetchall()}
+    migrations = [
+        ("whatsapp_number", "TEXT DEFAULT NULL"),
+        ("whatsapp_connected", "BOOLEAN DEFAULT 0"),
+    ]
+    for col_name, col_def in migrations:
+        if col_name not in existing:
+            try:
+                cursor.execute(f"ALTER TABLE ai_instances ADD COLUMN {col_name} {col_def}")
+                print(f"[MIGRATE] Added column ai_instances.{col_name}")
+            except Exception as e:
+                print(f"[MIGRATE] Skipped ai_instances.{col_name}: {e}")
+    conn.commit()
+    conn.close()
+
+try:
+    auto_migrate()
+except Exception as e:
+    print(f"[MIGRATE] Migration check skipped: {e}")
 
 load_dotenv()
 
