@@ -1,24 +1,38 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { 
+  Brain, 
+  MessageSquare, 
+  Zap, 
+  Dna, 
+  Wallet, 
+  FileText, 
+  Database, 
+  Beaker, 
+  Activity, 
+  Smartphone,
+  TrendingUp,
+  Cpu
+} from 'lucide-react'
 
 const FEATURES = [
   {
-    icon: '🧠',
+    icon: <Brain size={32} strokeWidth={1.5} />,
     title: 'Artificial Consciousness',
     desc: 'Beralih dari AI reaktif ke agensi proaktif. Evelyn memiliki kesadaran akan kebutuhan internalnya sendiri.',
   },
   {
-    icon: '📱',
+    icon: <Smartphone size={32} strokeWidth={1.5} />,
     title: 'Autonomous WhatsApp',
     desc: 'Integrasi Neonize memungkinkan AI untuk memulai percakapan, mengirim stiker, dan online/offline secara otonom.',
   },
   {
-    icon: '🧬',
+    icon: <Activity size={32} strokeWidth={1.5} />,
     title: 'Biological Loops',
     desc: 'Sistem "State Decay" mensimulasikan rasa lapar, lelah, dan kesepian yang memaksa AI untuk bertindak.',
   },
   {
-    icon: '💹',
+    icon: <TrendingUp size={32} strokeWidth={1.5} />,
     title: 'Virtual Micro-Economy',
     desc: 'Evelyn mengelola uang sistemnya sendiri, belanja kebutuhan di marketplace, dan memasak secara mandiri.',
   },
@@ -29,19 +43,19 @@ const RESEARCH_PAPERS = [
     title: 'Evelyn Cognitive Architecture',
     subtitle: 'A Shift Toward Functional AC',
     type: 'Whitepaper',
-    icon: '📄'
+    icon: <FileText size={24} strokeWidth={1.5} />
   },
   {
     title: 'The Hangry State',
     subtitle: 'Behavioral Shifts in State Decay',
     type: 'Research Note',
-    icon: '📊'
+    icon: <Database size={24} strokeWidth={1.5} />
   },
   {
     title: 'Dopamine & Circadian',
     subtitle: 'Simulating Realistic Daily Cycles',
     type: 'Technical Spec',
-    icon: '🧬'
+    icon: <Beaker size={24} strokeWidth={1.5} />
   }
 ]
 
@@ -222,7 +236,7 @@ export default function LandingPage() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              <div style={{ fontSize: 32, marginBottom: 20 }}>{f.icon}</div>
+              <div style={{ color: 'var(--accent)', marginBottom: 20 }}>{f.icon}</div>
               <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 8, color: 'var(--text-primary)' }}>{f.title}</h3>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: 15 }}>{f.desc}</p>
             </div>
@@ -243,7 +257,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           {RESEARCH_PAPERS.map(paper => (
-            <div
+            <div 
               key={paper.title}
               style={{
                 padding: 24,
@@ -253,7 +267,7 @@ export default function LandingPage() {
                 textAlign: 'left'
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 16 }}>{paper.icon}</div>
+              <div style={{ color: 'var(--accent)', marginBottom: 16 }}>{paper.icon}</div>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '0.1em', marginBottom: 8 }}>
                 {paper.type}
               </div>
