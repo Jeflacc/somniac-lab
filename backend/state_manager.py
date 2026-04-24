@@ -62,11 +62,11 @@ class StateManager:
         # Load from disk
         self.load_state()
         
-        # Catch up time if app was closed
+        # Catch up time if app was closed for a significant period
         current_time = time.time()
         time_elapsed = current_time - self.last_updated_timestamp
-        if time_elapsed > 0:
-            logging.info(f"App was offline for {time_elapsed} seconds. Catching up biology state...")
+        if time_elapsed > 30:
+            logging.info(f"App was offline for {time_elapsed:.1f} seconds. Catching up biology state...")
             self.update_state_over_time(seconds_elapsed=time_elapsed)
             
         self._evaluate_mood()
