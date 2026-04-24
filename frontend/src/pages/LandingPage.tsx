@@ -97,7 +97,6 @@ export default function LandingPage() {
       className="min-h-screen overflow-y-auto"
       style={{ background: 'var(--bg-primary)' }}
     >
-      <AuroraBackground showRadialGradient={true}>
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4"
         style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-primary)' }}
@@ -129,8 +128,9 @@ export default function LandingPage() {
         </div>
       </nav>
 
+      <AuroraBackground showRadialGradient={true} className="pt-20">
       {/* Hero */}
-      <section className="flex flex-col items-center justify-center text-center px-6 pt-40 pb-24 relative z-10">
+      <section className="flex flex-col items-center justify-center text-center px-6 pt-20 pb-24 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -215,6 +215,7 @@ export default function LandingPage() {
         </div>
         </motion.div>
       </section>
+      </AuroraBackground>
 
       {/* Features */}
       <section id="features" className="px-8 py-24 max-w-6xl mx-auto" style={{ borderTop: '1px solid var(--border)' }}>
@@ -324,8 +325,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      </AuroraBackground>
 
       {/* Footer */}
       <footer style={{ borderTop: '1px solid var(--border)', padding: '32px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: 14, background: 'var(--bg-primary)', position: 'relative', zIndex: 10 }}>
