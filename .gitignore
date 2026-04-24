@@ -13,3 +13,5 @@ journal.json
 wa_session.sqlite3
 dist/
 .DS_Store
+*.db
+backend/app.db
