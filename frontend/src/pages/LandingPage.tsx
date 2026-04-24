@@ -2,17 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Brain, 
-  MessageSquare, 
-  Zap, 
-  Dna, 
-  Wallet, 
   FileText, 
   Database, 
   Beaker, 
   Activity, 
   Smartphone,
-  TrendingUp,
-  Cpu
+  TrendingUp
 } from 'lucide-react'
 
 const FEATURES = [
