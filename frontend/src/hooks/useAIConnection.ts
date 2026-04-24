@@ -48,6 +48,7 @@ export function useAIConnection() {
   const [messages,   setMessages]   = useState<Message[]>([])
   const [isThinking, setIsThinking] = useState(false)
   const [streamBuffer, setStreamBuffer] = useState('')
+  const [qrString, setQrString] = useState<string | null>(null)
   const streamRef = useRef('')
 
   const addMessage = useCallback((msg: Omit<Message, 'id' | 'ts'>) => {
@@ -111,6 +112,9 @@ export function useAIConnection() {
           case 'command_result':
             addMessage({ role: 'system', text: data.msg || JSON.stringify(data) })
             break
+          case 'wa_qr':
+            setQrString(data.qr_string)
+            break
           case 'error':
             addMessage({ role: 'system', text: `⚠️ ${data.msg}` })
             break
@@ -142,6 +146,13 @@ export function useAIConnection() {
     }
   }, [])
 
+  const generateQr = useCallback((masterPhone: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'request_qr', master_phone: masterPhone }))
+      setQrString('LOADING') // indicate loading
+    }
+  }, [])
+
   return {
     connected,
     aiState,
@@ -150,7 +161,9 @@ export function useAIConnection() {
     messages,
     isThinking,
     streamBuffer,
+    qrString,
     sendMessage,
     sendCommand,
+    generateQr,
   }
 }

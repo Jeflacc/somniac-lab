@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import { useAIConnection, type Message, type AIState } from '../hooks/useAIConnection'
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
@@ -282,8 +283,10 @@ function barColor(v: number): string {
 
 /* ── Main Lab Page ───────────────────────────────────────────────────────── */
 export default function LabPage() {
-  const { connected, aiState, houseState, economy, messages, isThinking, streamBuffer, sendMessage, sendCommand } = useAIConnection()
+  const { connected, aiState, houseState, economy, messages, isThinking, streamBuffer, qrString, sendMessage, sendCommand, generateQr } = useAIConnection()
   const [input, setInput] = useState('')
+  const [currentTab, setCurrentTab] = useState<'chat' | 'settings'>('chat')
+  const [masterPhone, setMasterPhone] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef  = useRef<HTMLTextAreaElement>(null)
 
@@ -342,16 +345,21 @@ export default function LabPage() {
         <div style={{ marginBottom: 8, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', padding: '0 12px' }}>
           Navigation
         </div>
-        <div className="sidebar-item active">
+        <div 
+          className={`sidebar-item ${currentTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setCurrentTab('chat')}
+          style={{ cursor: 'pointer' }}
+        >
           <span>💬</span> Chat
         </div>
-        <div className="sidebar-item" style={{ marginTop: 2 }}>
+        <div className="sidebar-item" style={{ marginTop: 2, opacity: 0.5, cursor: 'not-allowed' }}>
           <span>📓</span> Journal
         </div>
-        <div className="sidebar-item" style={{ marginTop: 2 }}>
-          <span>📱</span> WhatsApp
-        </div>
-        <div className="sidebar-item" style={{ marginTop: 2 }}>
+        <div 
+          className={`sidebar-item ${currentTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setCurrentTab('settings')}
+          style={{ cursor: 'pointer', marginTop: 2 }}
+        >
           <span>⚙️</span> Settings
         </div>
 
@@ -388,77 +396,152 @@ export default function LabPage() {
           {aiState && <MoodBadge mood={aiState.mood} />}
         </div>
 
-        {/* Messages */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {messages.length === 0 && !isThinking && (
-            <div style={{ textAlign: 'center', marginTop: 60, color: 'var(--text-muted)' }}>
-              <EvelynEye size={56} sleeping={aiState?.is_sleeping} />
-              <p style={{ marginTop: 16, fontSize: 15 }}>
-                {aiState?.is_sleeping ? 'Evelyn sedang tidur... 💤' : 'Mulai percakapan dengan Evelyn'}
+        {currentTab === 'chat' ? (
+          <>
+            {/* Messages */}
+            <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {messages.length === 0 && !isThinking && (
+                <div style={{ textAlign: 'center', marginTop: 60, color: 'var(--text-muted)' }}>
+                  <EvelynEye size={56} sleeping={aiState?.is_sleeping} />
+                  <p style={{ marginTop: 16, fontSize: 15 }}>
+                    {aiState?.is_sleeping ? 'Evelyn sedang tidur... 💤' : 'Mulai percakapan dengan Evelyn'}
+                  </p>
+                </div>
+              )}
+
+              {messages.map(msg => (
+                <ChatMessage key={msg.id} msg={msg} />
+              ))}
+
+              {isThinking && streamBuffer && <StreamingBubble text={streamBuffer} />}
+              {isThinking && !streamBuffer && <TypingIndicator />}
+
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Input */}
+            <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+              <div style={{ position: 'relative' }}>
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder={aiState?.is_sleeping ? 'Evelyn sedang tidur...' : 'Ketik pesan (Enter untuk kirim, Shift+Enter baris baru)'}
+                  disabled={aiState?.is_sleeping || isThinking}
+                  rows={1}
+                  className="chat-input"
+                  style={{
+                    maxHeight: 120,
+                    overflowY: 'auto',
+                    opacity: aiState?.is_sleeping ? 0.5 : 1,
+                  }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isThinking || aiState?.is_sleeping}
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: !input.trim() || isThinking ? 'var(--border)' : 'var(--text-primary)',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    cursor: !input.trim() || isThinking ? 'default' : 'pointer',
+                    color: 'var(--bg-primary)',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    if (input.trim() && !isThinking) e.currentTarget.style.background = 'var(--accent-2)'
+                  }}
+                  onMouseLeave={e => {
+                    if (input.trim() && !isThinking) e.currentTarget.style.background = 'var(--text-primary)'
+                  }}
+                >
+                  {isThinking ? '⏳' : '↑'}
+                </button>
+              </div>
+              <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6, textAlign: 'center' }}>
+                Somniac AI · Artificial Consciousness Engine
               </p>
             </div>
-          )}
-
-          {messages.map(msg => (
-            <ChatMessage key={msg.id} msg={msg} />
-          ))}
-
-          {isThinking && streamBuffer && <StreamingBubble text={streamBuffer} />}
-          {isThinking && !streamBuffer && <TypingIndicator />}
-
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input */}
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-          <div style={{ position: 'relative' }}>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder={aiState?.is_sleeping ? 'Evelyn sedang tidur...' : 'Ketik pesan (Enter untuk kirim, Shift+Enter baris baru)'}
-              disabled={aiState?.is_sleeping || isThinking}
-              rows={1}
-              className="chat-input"
-              style={{
-                maxHeight: 120,
-                overflowY: 'auto',
-                opacity: aiState?.is_sleeping ? 0.5 : 1,
-              }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isThinking || aiState?.is_sleeping}
-              style={{
-                position: 'absolute',
-                right: 12,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: !input.trim() || isThinking ? 'var(--border)' : 'var(--text-primary)',
-                border: 'none',
-                borderRadius: 8,
-                padding: '6px 12px',
-                cursor: !input.trim() || isThinking ? 'default' : 'pointer',
-                color: 'var(--bg-primary)',
-                fontSize: 16,
-                fontWeight: 600,
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => {
-                if (input.trim() && !isThinking) e.currentTarget.style.background = 'var(--accent-2)'
-              }}
-              onMouseLeave={e => {
-                if (input.trim() && !isThinking) e.currentTarget.style.background = 'var(--text-primary)'
-              }}
-            >
-              {isThinking ? '⏳' : '↑'}
-            </button>
+          </>
+        ) : (
+          <div style={{ padding: 40, flex: 1, overflow: 'auto' }}>
+            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20 }}>Settings</h2>
+            
+            <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 12, border: '1px solid var(--border)' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#25D366' }}>📱</span> WhatsApp Multi-Tenant Connection
+              </h3>
+              <p style={{ marginBottom: 16, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5 }}>
+                Connect Evelyn to your personal WhatsApp number. This is an isolated session tied only to your account.
+              </p>
+              
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600 }}>Master Phone Number</label>
+                <input 
+                  type="text" 
+                  value={masterPhone}
+                  onChange={e => setMasterPhone(e.target.value)}
+                  placeholder="e.g. 628123456789"
+                  style={{
+                    width: '100%',
+                    maxWidth: 300,
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+              
+              <button 
+                onClick={() => generateQr(masterPhone)}
+                style={{
+                  background: 'var(--text-primary)',
+                  color: 'var(--bg-primary)',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--text-primary)'}
+              >
+                Generate Connection QR
+              </button>
+              
+              {qrString && (
+                <div style={{ marginTop: 30, padding: 20, background: 'var(--bg-primary)', borderRadius: 12, border: '1px solid var(--border)', display: 'inline-block' }}>
+                  {qrString === 'LOADING' ? (
+                    <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>
+                      Loading WhatsApp Session...
+                    </div>
+                  ) : qrString === 'CONNECTED' ? (
+                    <div style={{ textAlign: 'center', padding: 20, color: 'var(--green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 24 }}>🟢</span> Connected to WhatsApp!
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)' }}>Scan this QR code with WhatsApp Linked Devices</p>
+                      <div style={{ background: 'white', padding: 16, borderRadius: 8, display: 'inline-block' }}>
+                        <QRCodeSVG value={qrString} size={200} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6, textAlign: 'center' }}>
-            Somniac AI · Artificial Consciousness Engine
-          </p>
-        </div>
+        )}
       </main>
 
       {/* ── Right Sidebar: AC Dashboard ──────────────────────────────────── */}

@@ -63,12 +63,36 @@ from user_extractor import (
     parse_catat_tags,
     strip_all_system_tags,
 )
+from whatsapp_handler import WhatsAppHandler
 
 # Global services
 memory: Optional[MemoryManager] = None
 llm: Optional[LLMController]    = None
 chat_lock: Optional[asyncio.Lock] = None
 active_ws: dict[int, set[WebSocket]] = {} # user_id -> websockets
+
+# WhatsApp Globals
+active_wa_handlers: dict[int, WhatsAppHandler] = {}
+wa_in_queue = asyncio.Queue()
+
+async def process_wa_queue():
+    while True:
+        try:
+            user_id, text, message = await wa_in_queue.get()
+            db = SessionLocal()
+            try:
+                user = db.query(models.User).filter(models.User.id == user_id).first()
+                if user:
+                    req = ChatRequest(message=text)
+                    await chat_endpoint(req, user, db, source="whatsapp")
+            except Exception as e:
+                logger.error(f"[WA QUEUE] Error: {e}")
+            finally:
+                db.close()
+                wa_in_queue.task_done()
+        except Exception as e:
+            logger.error(f"[WA QUEUE LOOP] {e}")
+            await asyncio.sleep(1)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -90,6 +114,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(autonomous_loop())
     asyncio.create_task(house_tick_loop())
     asyncio.create_task(state_broadcast_loop())
+    asyncio.create_task(process_wa_queue())
 
     logger.info(f"✅ Engine ready!")
     yield
@@ -191,6 +216,38 @@ async def house_tick_loop():
                         house.enqueue_chore("laundry")
                     elif house.boredom > 0.75:
                         house.enqueue_chore(random.choice(["play_console", "watch_tv", "wander"]))
+                        
+                if events.get("mark_read_wa_message"):
+                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                        active_wa_handlers[user.id].mark_read(events["mark_read_wa_message"])
+                        
+                if events.get("wa_reply_ready") and events.get("wa_data"):
+                    wa_data = events["wa_data"]
+                    user_input = wa_data["user_input"]
+                    req = ChatRequest(message=user_input)
+                    # We run this in a task so it doesn't block the house tick loop
+                    async def async_wa_chat(u, text):
+                        db_sess = SessionLocal()
+                        try:
+                            req = ChatRequest(message=text)
+                            await chat_endpoint(req, u, db_sess, source="whatsapp")
+                        except Exception as e:
+                            logger.error(f"[WA CHAT ERROR] {e}")
+                        finally:
+                            db_sess.close()
+                            # Notify house manager that reply was sent to unblock WA queue
+                            db_house = SessionLocal()
+                            try:
+                                h = HouseManager(u.id, db_house)
+                                h.notify_wa_reply_sent()
+                                h.save_state()
+                            except Exception as e:
+                                pass
+                            finally:
+                                db_house.close()
+                                
+                    asyncio.create_task(async_wa_chat(user, user_input))
+                    
         except Exception as e:
             logger.error(f"[HOUSE TICK] {e}")
         finally:
@@ -272,6 +329,9 @@ async def autonomous_loop():
                             rf"^(?:AI|{re.escape(AI_NAME)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
                         ).strip()
                         await broadcast_to_user(user.id, {"type": "ai_end", "response": ai_response, "source": "autonomous"})
+                        if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                            active_wa_handlers[user.id].send_natural_burst(ai_response)
+                            
                         await asyncio.to_thread(memory.add_memory, user.id, "ai", ai_response)
         except Exception as e:
             logger.error(f"[AUTO LOOP] Error: {e}")
@@ -294,7 +354,7 @@ async def get_state(current_user: models.User = Depends(get_current_user), db: S
     }
 
 @app.post("/api/chat")
-async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db), source: str = "web"):
     if not llm:
         raise HTTPException(503, "Engine not ready")
 
@@ -374,7 +434,9 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
             rf"^(?:AI|{re.escape(AI_NAME)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
         ).strip()
 
-        await broadcast_to_user(current_user.id, {"type": "ai_end", "response": ai_response, "source": "chat"})
+        await broadcast_to_user(current_user.id, {"type": "ai_end", "response": ai_response, "source": source})
+        if source == "whatsapp" and current_user.id in active_wa_handlers and active_wa_handlers[current_user.id].is_connected:
+            active_wa_handlers[current_user.id].send_natural_burst(ai_response)
 
         chat_history.append({"role": "user", "content": user_input})
         chat_history.append({"role": "assistant", "content": ai_response})
@@ -519,6 +581,52 @@ async def websocket_endpoint(ws: WebSocket, token: str = None):
                     await ws.send_json({"type": "error", "msg": str(e)})
                 finally:
                     db.close()
+                    
+            elif msg_type == "request_qr":
+                master_phone = data.get("master_phone")
+                db = SessionLocal()
+                ai_inst = db.query(models.AIInstance).filter(models.AIInstance.owner_id == user_id).first()
+                if master_phone and ai_inst:
+                    ai_inst.whatsapp_number = master_phone
+                    db.commit()
+                elif not master_phone and ai_inst:
+                    master_phone = ai_inst.whatsapp_number
+                db.close()
+                
+                if not master_phone:
+                    await ws.send_json({"type": "error", "msg": "Master phone number is required to connect WhatsApp."})
+                    continue
+                    
+                async def send_qr_to_ws(qr_str):
+                    await broadcast_to_user(user_id, {"type": "wa_qr", "qr_string": qr_str})
+                    
+                if user_id not in active_wa_handlers:
+                    try:
+                        handler = WhatsAppHandler(
+                            user_id=user_id,
+                            master_phone=master_phone,
+                            in_queue=wa_in_queue,
+                            main_loop=asyncio.get_running_loop(),
+                            qr_callback=send_qr_to_ws
+                        )
+                        active_wa_handlers[user_id] = handler
+                    except Exception as e:
+                        await ws.send_json({"type": "error", "msg": f"Failed to initialize WhatsApp: {e}"})
+                        continue
+                else:
+                    handler = active_wa_handlers[user_id]
+                    handler.qr_callback = send_qr_to_ws
+                    handler.master_phone = str(master_phone).replace("+", "").replace(" ", "").replace("-", "")
+                    from neonize.utils import build_jid
+                    handler.master_jid = build_jid(handler.master_phone)
+                
+                if handler.is_connected:
+                    await ws.send_json({"type": "wa_qr", "qr_string": "CONNECTED"})
+                elif handler.last_qr and not handler.is_connecting:
+                    await ws.send_json({"type": "wa_qr", "qr_string": handler.last_qr})
+                elif not handler.is_connecting:
+                    import threading
+                    threading.Thread(target=handler.connect, daemon=True).start()
 
     except WebSocketDisconnect:
         logger.info(f"[WS] Client disconnected: user '{username}'")

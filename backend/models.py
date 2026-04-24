@@ -32,6 +32,10 @@ class AIInstance(Base):
     # Store complex dynamic state (inventory, memories, multipliers)
     state_data = Column(JSON, default={})
     
+    # WhatsApp Multi-Tenant Fields
+    whatsapp_number = Column(String, default="")
+    whatsapp_connected = Column(Boolean, default=False)
+    
     owner = relationship("User", back_populates="ai_instances")
 
 class Economy(Base):
