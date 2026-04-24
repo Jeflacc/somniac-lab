@@ -111,6 +111,10 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 
+@app.get("/health")
+async def health():
+    return {"status": "ok", "ai_name": AI_NAME}
+
 
 async def broadcast_to_user(user_id: int, msg: dict):
     if user_id not in active_ws:
