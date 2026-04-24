@@ -101,9 +101,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Somniac AI Backend", lifespan=lifespan)
 
+ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    "https://lab.somniac.me",
+    "https://somniac.me",
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL, "http://localhost:3000", "http://localhost:5173", "*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
