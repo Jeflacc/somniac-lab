@@ -9,8 +9,6 @@ import {
   Smartphone,
   TrendingUp
 } from 'lucide-react'
-import { AuroraBackground } from '@/components/ui/aurora-background'
-import { motion } from 'framer-motion'
 
 const FEATURES = [
   {
@@ -128,15 +126,8 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      <AuroraBackground showRadialGradient={true} className="pt-20">
       {/* Hero */}
-      <section className="flex flex-col items-center justify-center text-center px-6 pt-20 pb-24 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex flex-col items-center"
-        >
+      <section className="flex flex-col items-center justify-center text-center px-6 pt-40 pb-24">
         <div className="mb-8">
           <EvelynEye size={72} animated />
         </div>
@@ -213,9 +204,7 @@ export default function LandingPage() {
             Learn More
           </a>
         </div>
-        </motion.div>
       </section>
-      </AuroraBackground>
 
       {/* Features */}
       <section id="features" className="px-8 py-24 max-w-6xl mx-auto" style={{ borderTop: '1px solid var(--border)' }}>
@@ -327,7 +316,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer style={{ borderTop: '1px solid var(--border)', padding: '32px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: 14, background: 'var(--bg-primary)', position: 'relative', zIndex: 10 }}>
+      <footer style={{ borderTop: '1px solid var(--border)', padding: '32px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
         <span>© 2026 Somniac AI. All rights reserved.</span>
         <span>Built by Vathir Antony</span>
       </footer>
