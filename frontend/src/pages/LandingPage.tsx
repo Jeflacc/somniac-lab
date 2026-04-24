@@ -9,6 +9,7 @@ import {
   Smartphone,
   TrendingUp
 } from 'lucide-react'
+import { Meteors } from '@/components/ui/meteors'
 
 const FEATURES = [
   {
@@ -127,7 +128,8 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="flex flex-col items-center justify-center text-center px-6 pt-40 pb-24">
+      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-40 pb-24 overflow-hidden">
+        <Meteors number={30} />
         <div className="mb-8">
           <EvelynEye size={72} animated />
         </div>
