@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Environment / Secrets - NEVER commit these
+.env
+*.env.local
+
+# AI State files (runtime data, per-instance)
+state_data.json
+house_state.json
+economy_state.json
+journal.json
+biology_config.json
+
+# ChromaDB vector store (runtime data)
+chroma_db/
+
+# WhatsApp session
+wa_session.sqlite3
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

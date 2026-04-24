@@ -1,0 +1,15 @@
+.env
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+logs/
+chroma_db/
+state_data.json
+house_state.json
+economy_state.json
+journal.json
+wa_session.sqlite3
+dist/
+.DS_Store
