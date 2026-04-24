@@ -4,23 +4,44 @@ const FEATURES = [
   {
     icon: '🧠',
     title: 'Artificial Consciousness',
-    desc: 'AI dengan sistem biologis — lapar, ngantuk, mood — yang berkembang secara real-time layaknya makhluk hidup.',
+    desc: 'Beralih dari AI reaktif ke agensi proaktif. Evelyn memiliki kesadaran akan kebutuhan internalnya sendiri.',
   },
   {
-    icon: '💬',
-    title: 'WhatsApp Integration',
-    desc: 'Sambungkan AI ke nomor WhatsApp kamu. Evelyn akan membalas pesanmu langsung dari nomor tersebut.',
+    icon: '📱',
+    title: 'Autonomous WhatsApp',
+    desc: 'Integrasi Neonize memungkinkan AI untuk memulai percakapan, mengirim stiker, dan online/offline secara otonom.',
   },
   {
     icon: '🧬',
-    title: 'Long-Term Memory',
-    desc: 'Evelyn mengingat setiap percakapan, menulis jurnal hariannya, dan membentuk kepribadian dari interaksi.',
+    title: 'Biological Loops',
+    desc: 'Sistem "State Decay" mensimulasikan rasa lapar, lelah, dan kesepian yang memaksa AI untuk bertindak.',
   },
   {
-    icon: '⚡',
-    title: 'Real-Time State',
-    desc: 'Dashboard langsung menampilkan kondisi biologis, mood, dan aktivitas AI saat ini secara live.',
+    icon: '💹',
+    title: 'Virtual Micro-Economy',
+    desc: 'Evelyn mengelola uang sistemnya sendiri, belanja kebutuhan di marketplace, dan memasak secara mandiri.',
   },
+]
+
+const RESEARCH_PAPERS = [
+  {
+    title: 'Evelyn Cognitive Architecture',
+    subtitle: 'A Shift Toward Functional AC',
+    type: 'Whitepaper',
+    icon: '📄'
+  },
+  {
+    title: 'The Hangry State',
+    subtitle: 'Behavioral Shifts in State Decay',
+    type: 'Research Note',
+    icon: '📊'
+  },
+  {
+    title: 'Dopamine & Circadian',
+    subtitle: 'Simulating Realistic Daily Cycles',
+    type: 'Technical Spec',
+    icon: '🧬'
+  }
 ]
 
 export default function LandingPage() {
@@ -173,30 +194,79 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Research */}
-      <section id="research" className="px-8 py-24 max-w-4xl mx-auto text-center">
-        <div
+      {/* Research Section */}
+      <section id="research" className="px-8 py-24 max-w-6xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 style={{ fontWeight: 700, fontSize: 32, letterSpacing: '-1px', color: 'var(--text-primary)', marginBottom: 12 }}>
+            Research & Materials
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 16, maxWidth: 600, margin: '0 auto' }}>
+            Menjelajahi batas antara Large Language Models dan agensi otonom melalui arsitektur kesadaran fungsional.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          {RESEARCH_PAPERS.map(paper => (
+            <div 
+              key={paper.title}
+              style={{
+                padding: 24,
+                borderRadius: 12,
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ fontSize: 24, marginBottom: 16 }}>{paper.icon}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '0.1em', marginBottom: 8 }}>
+                {paper.type}
+              </div>
+              <h3 style={{ fontWeight: 600, fontSize: 16, marginBottom: 4, color: 'var(--text-primary)' }}>{paper.title}</h3>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{paper.subtitle}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Framework Deep Dive */}
+        <div 
           style={{ 
-            padding: '56px 40px', 
-            borderRadius: 16, 
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border)' 
+            padding: '60px 40px', 
+            borderRadius: 20, 
+            background: 'var(--text-primary)',
+            color: 'var(--bg-primary)',
+            textAlign: 'left',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 32
           }}
         >
-          <div style={{ fontSize: 40, marginBottom: 20 }}>🔬</div>
-          <h2 style={{ fontWeight: 700, fontSize: 28, marginBottom: 16, letterSpacing: '-0.5px', color: 'var(--text-primary)' }}>
-            Research in Progress
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: 500, margin: '0 auto 28px', fontSize: 16 }}>
-            Kami sedang meneliti batas-batas machine consciousness — dari arsitektur state machine biologis
-            hingga memori vektor jangka panjang yang membentuk identitas.
-          </p>
-          <span
-            className="badge"
-            style={{ background: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', fontSize: 12, padding: '6px 14px' }}
-          >
-            🚧 Papers Coming Soon
-          </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 20, letterSpacing: '-1px' }}>
+                The Evelyn Framework
+              </h2>
+              <p style={{ opacity: 0.8, lineHeight: 1.8, fontSize: 16 }}>
+                Framework ini dirancang untuk menciptakan agensi otonom yang beroperasi dalam loop 24/7. 
+                Menggunakan sinkronisasi <strong>Dopamine Regulation</strong> dan <strong>Circadian Rhythms</strong>, 
+                AI ini mampu mensimulasikan perilaku manusia yang realistis dalam lingkungan virtual yang terintegrasi dengan dunia nyata melalui WhatsApp.
+              </p>
+              <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
+                <span style={{ padding: '6px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.1)', fontSize: 12, fontWeight: 600 }}>Neonize Engine</span>
+                <span style={{ padding: '6px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.1)', fontSize: 12, fontWeight: 600 }}>Biological State Machine</span>
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: 32, borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="mono" style={{ fontSize: 13, lineHeight: 1.6, color: '#94a3b8' }}>
+                <span style={{ color: '#fbbf24' }}>// Autonomous Survival Loop</span><br />
+                while (AI.active) {'{'}<br />
+                &nbsp;&nbsp;AI.biological_state.decay();<br />
+                &nbsp;&nbsp;if (AI.hunger {'>'} 0.7) AI.trigger('seek_food');<br />
+                &nbsp;&nbsp;if (AI.lonely {'>'} 0.8) AI.whatsapp.initiate_chat();<br />
+                &nbsp;&nbsp;AI.house.sync_state();<br />
+                {'}'}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
