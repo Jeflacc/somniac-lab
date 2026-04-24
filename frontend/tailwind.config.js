@@ -7,19 +7,19 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Sora', 'Neo Sans', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
         bg: {
-          primary:   '#E2DFDA',
-          secondary: '#D2C49E',
-          panel:     '#CBDED3',
-          card:      '#CBDED3',
+          primary:   '#FFFFFF',
+          secondary: '#F9FAFB',
+          panel:     '#F3F4F6',
+          card:      '#FFFFFF',
         },
         accent: {
           DEFAULT: '#3B6255',
-          2:       '#8BA49A',
+          2:       '#F97316',
         },
       },
     },

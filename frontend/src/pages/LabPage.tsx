@@ -244,12 +244,13 @@ function QuickBtn({ onClick, icon, label }: { onClick: () => void; icon: string;
     <button
       onClick={onClick}
       style={{
-        background: 'var(--bg-card)',
+        background: 'var(--bg-primary)',
         border: '1px solid var(--border)',
         borderRadius: 8,
         padding: '8px 12px',
         color: 'var(--text-secondary)',
         fontSize: 12,
+        fontWeight: 500,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -258,12 +259,14 @@ function QuickBtn({ onClick, icon, label }: { onClick: () => void; icon: string;
         transition: 'all 0.15s',
       }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--accent)'
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--text-primary)'
         ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'
+        ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-secondary)'
       }}
       onMouseLeave={e => {
         (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
         ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+        ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-primary)'
       }}
     >
       <span>{icon}</span> {label}
@@ -432,14 +435,21 @@ export default function LabPage() {
                 right: 12,
                 top: '50%',
                 transform: 'translateY(-50%)',
-                background: !input.trim() || isThinking ? 'var(--bg-card)' : 'var(--accent)',
+                background: !input.trim() || isThinking ? 'var(--border)' : 'var(--text-primary)',
                 border: 'none',
                 borderRadius: 8,
-                padding: '6px 10px',
+                padding: '6px 12px',
                 cursor: !input.trim() || isThinking ? 'default' : 'pointer',
                 color: 'var(--bg-primary)',
-                fontSize: 14,
-                transition: 'background 0.2s',
+                fontSize: 16,
+                fontWeight: 600,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                if (input.trim() && !isThinking) e.currentTarget.style.background = 'var(--accent-2)'
+              }}
+              onMouseLeave={e => {
+                if (input.trim() && !isThinking) e.currentTarget.style.background = 'var(--text-primary)'
               }}
             >
               {isThinking ? '⏳' : '↑'}
