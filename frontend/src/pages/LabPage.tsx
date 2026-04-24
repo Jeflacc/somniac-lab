@@ -54,7 +54,7 @@ function ActivityBadge({ chore }: { chore: string | null }) {
     online_shopping: '🛒', check_wa: '📱',
   }
   return (
-    <span className="badge" style={{ background: 'rgba(124,106,255,0.1)', color: 'var(--accent-2)', border: '1px solid rgba(124,106,255,0.2)', fontSize: 11 }}>
+    <span className="badge" style={{ background: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid var(--accent-glow)', fontSize: 11 }}>
       {icons[chore] || '⚙️'} {chore.replace(/_/g, ' ')}
     </span>
   )
@@ -64,14 +64,14 @@ function EvelynEye({ size = 36, sleeping = false }: { size?: number; sleeping?: 
   return (
     <svg width={size} height={size} viewBox="0 0 100 100"
       style={{ animation: sleeping ? 'none' : 'blink 5s infinite', flexShrink: 0 }}>
-      <ellipse cx="50" cy="50" rx="44" ry="44" fill="none" stroke="#7c6aff" strokeWidth="4" />
-      <ellipse cx="50" cy="50" rx="26" ry="26" fill="#7c6aff" opacity="0.15" />
+      <ellipse cx="50" cy="50" rx="44" ry="44" fill="none" stroke="var(--accent)" strokeWidth="4" />
+      <ellipse cx="50" cy="50" rx="26" ry="26" fill="var(--accent)" opacity="0.15" />
       {sleeping ? (
-        <ellipse cx="50" cy="55" rx="18" ry="4" fill="#7c6aff" opacity="0.5" />
+        <ellipse cx="50" cy="55" rx="18" ry="4" fill="var(--accent)" opacity="0.5" />
       ) : (
         <>
-          <circle cx="50" cy="50" r="18" fill="#7c6aff" />
-          <circle cx="50" cy="50" r="9" fill="#0a0a0f" />
+          <circle cx="50" cy="50" r="18" fill="var(--accent)" />
+          <circle cx="50" cy="50" r="9" fill="var(--bg-primary)" />
           <circle cx="44" cy="44" r="4" fill="rgba(255,255,255,0.7)" />
         </>
       )}
@@ -178,7 +178,7 @@ function ACDashboard({ aiState, houseState, economy, sendCommand }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
           <StatBar label="Hunger"     value={aiState.hunger}     color={barColor(aiState.hunger)} />
           <StatBar label="Sleepiness" value={aiState.sleepiness} color={barColor(aiState.sleepiness)} />
-          <StatBar label="Libido"     value={aiState.libido}     color="#a78bfa" />
+          <StatBar label="Libido"     value={aiState.libido}     color="var(--accent-2)" />
         </div>
       </div>
 
@@ -437,7 +437,7 @@ export default function LabPage() {
                 borderRadius: 8,
                 padding: '6px 10px',
                 cursor: !input.trim() || isThinking ? 'default' : 'pointer',
-                color: '#fff',
+                color: 'var(--bg-primary)',
                 fontSize: 14,
                 transition: 'background 0.2s',
               }}

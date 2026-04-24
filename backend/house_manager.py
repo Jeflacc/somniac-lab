@@ -1,11 +1,9 @@
-import json
-import os
-import time
 import logging
 import copy
 from datetime import datetime, date
 
-HOUSE_STATE_FILE = os.path.join(os.path.dirname(__file__), "house_state.json")
+import models
+from sqlalchemy.orm import Session
 
 # ─────────────── Room & Item Definitions ───────────────
 ROOM_DEFINITIONS = {
@@ -222,7 +220,13 @@ CHORE_DEFINITIONS = {
 
 
 class HouseManager:
-    def __init__(self):
+    """
+    Manages the physical space, inventory interactions, and chore queues.
+    """
+
+    def __init__(self, user_id: int, db: Session):
+        self.user_id = user_id
+        self.db = db
         self.rooms = copy.deepcopy(ROOM_DEFINITIONS)
         self.current_room = "kamar_tidur"
         self.current_chore_id = None
@@ -683,17 +687,26 @@ class HouseManager:
             }
         }
         try:
-            with open(HOUSE_STATE_FILE, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            house = self.db.query(models.HouseState).filter(models.HouseState.owner_id == self.user_id).first()
+            if not house:
+                house = models.HouseState(owner_id=self.user_id)
+                self.db.add(house)
+                
+            house.current_chore_id = self.current_chore_id
+            house.current_chore_start_time = self.step_start_time
+            house.chore_queue = self.chore_queue
+            house.rooms_data = data
+            self.db.commit()
         except Exception as e:
             logging.error(f"[HOUSE] save_state failed: {e}")
 
     def load_state(self):
-        if not os.path.exists(HOUSE_STATE_FILE):
-            return
         try:
-            with open(HOUSE_STATE_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            house = self.db.query(models.HouseState).filter(models.HouseState.owner_id == self.user_id).first()
+            if not house:
+                return
+                
+            data = house.rooms_data or {}
 
             self.current_room = data.get("current_room", "kamar_tidur")
             cid = data.get("current_chore_id")
@@ -727,6 +740,6 @@ class HouseManager:
                         if item_id in self.rooms[room_id]["items"]:
                             self.rooms[room_id]["items"][item_id]["state"] = state
 
-            logging.info("[HOUSE] State loaded from disk.")
+            logging.info("[HOUSE] State loaded from DB.")
         except Exception as e:
             logging.error(f"[HOUSE] load_state failed: {e}")

@@ -1,9 +1,8 @@
-import json
-import os
 import logging
 from datetime import datetime, timedelta
 
-JOURNAL_FILE = os.path.join(os.path.dirname(__file__), "journal.json")
+import models
+from sqlalchemy.orm import Session
 
 class JournalManager:
     """
@@ -11,8 +10,9 @@ class JournalManager:
     perasaan, dan aktivitas — terorganisir per tanggal.
     """
 
-    def __init__(self, journal_path: str = JOURNAL_FILE):
-        self.journal_path = journal_path
+    def __init__(self, user_id: int, db: Session):
+        self.user_id = user_id
+        self.db = db
         self._data: dict = {}  # {"2026-04-11": [{"time": "19:30", "entry": "..."}]}
         self._load()
 
@@ -20,18 +20,25 @@ class JournalManager:
     # PERSISTENCE
     # ─────────────────────────────────────────────
     def _load(self):
-        if os.path.exists(self.journal_path):
-            try:
-                with open(self.journal_path, "r", encoding="utf-8") as f:
-                    self._data = json.load(f)
-            except Exception as e:
-                logging.error(f"[Journal] Gagal load: {e}")
-                self._data = {}
+        try:
+            records = self.db.query(models.JournalEntry).filter(models.JournalEntry.owner_id == self.user_id).all()
+            self._data = {r.date_str: r.entries for r in records}
+        except Exception as e:
+            logging.error(f"[Journal] Gagal load: {e}")
+            self._data = {}
 
     def _save(self):
         try:
-            with open(self.journal_path, "w", encoding="utf-8") as f:
-                json.dump(self._data, f, indent=2, ensure_ascii=False)
+            for date_str, entries in self._data.items():
+                record = self.db.query(models.JournalEntry).filter(
+                    models.JournalEntry.owner_id == self.user_id,
+                    models.JournalEntry.date_str == date_str
+                ).first()
+                if not record:
+                    record = models.JournalEntry(owner_id=self.user_id, date_str=date_str)
+                    self.db.add(record)
+                record.entries = entries
+            self.db.commit()
         except Exception as e:
             logging.error(f"[Journal] Gagal save: {e}")
 

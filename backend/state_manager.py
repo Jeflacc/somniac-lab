@@ -5,11 +5,17 @@ import json
 import os
 import time
 import datetime as dt
+import os
+import time
+import datetime as dt
 
-STATE_FILE = os.path.join(os.path.dirname(__file__), "state_data.json")
+import models
+from sqlalchemy.orm import Session
 
 class StateManager:
-    def __init__(self):
+    def __init__(self, user_id: int, db: Session):
+        self.user_id = user_id
+        self.db = db
         self.load_config()
         
         # Biologics (0.0 means fully satisfied/not present, 1.0 means extreme)
@@ -84,10 +90,21 @@ class StateManager:
 
     def save_state(self):
         self.last_updated_timestamp = time.time()
-        data = {
-            "hunger": self.hunger,
-            "sleepiness": self.sleepiness,
-            "libido": self.libido,
+        
+        ai = self.db.query(models.AIInstance).filter(models.AIInstance.owner_id == self.user_id).first()
+        if not ai:
+            ai = models.AIInstance(owner_id=self.user_id)
+            self.db.add(ai)
+            
+        ai.hunger = self.hunger
+        ai.sleepiness = self.sleepiness
+        ai.libido = self.libido
+        ai.is_sleeping = self.is_sleeping
+        ai.mood = self.mood
+        ai.last_updated = self.last_updated_timestamp
+        
+        # Save complex data to state_data JSON column
+        ai.state_data = {
             "libido_phase": self.libido_phase,
             "libido_modifier": self.libido_modifier,
             "interaction_count": self.interaction_count,
@@ -98,42 +115,40 @@ class StateManager:
             "laziness_mult": self.laziness_mult,
             "core_memories": self.core_memories,
             "known_users": self.known_users,
-            "last_updated_timestamp": self.last_updated_timestamp,
-            "is_sleeping": self.is_sleeping,
             "inventory": self.inventory,
             "food_inventory": self.food_inventory,
             "item_inventory": self.item_inventory,
         }
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+        
+        self.db.commit()
 
     def load_state(self):
-        if os.path.exists(STATE_FILE):
-            try:
-                with open(STATE_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                self.hunger = data.get("hunger", 0.0)
-                self.sleepiness = data.get("sleepiness", 0.0)
-                self.libido_phase = data.get("libido_phase", 0.0)
-                self.libido_modifier = data.get("libido_modifier", 0.0)
-                # Recompute libido from saved phase + modifier
-                libido_wave = (math.sin(self.libido_phase - math.pi / 2) + 1) / 2
-                self.libido = max(0.0, min(1.0, libido_wave * 0.75 + self.libido_modifier * 0.25))
-                self.interaction_count = data.get("interaction_count", 0)
-                self.joy = data.get("joy", 0.0)
-                self.stress = data.get("stress", 0.0)
-                self.irritability_mult = data.get("irritability_mult", 1.0)
-                self.affection_mult = data.get("affection_mult", 1.0)
-                self.laziness_mult = data.get("laziness_mult", 1.0)
-                self.core_memories = data.get("core_memories", [])
-                self.known_users = data.get("known_users", {})
-                self.last_updated_timestamp = data.get("last_updated_timestamp", time.time())
-                self.is_sleeping = data.get("is_sleeping", False)
-                self.inventory = data.get("inventory", [])
-                self.food_inventory = data.get("food_inventory", {})
-                self.item_inventory = data.get("item_inventory", {})
-            except Exception as e:
-                logging.error(f"Failed to load state: {e}")
+        ai = self.db.query(models.AIInstance).filter(models.AIInstance.owner_id == self.user_id).first()
+        if not ai:
+            return
+            
+        self.hunger = ai.hunger
+        self.sleepiness = ai.sleepiness
+        self.libido = ai.libido
+        self.is_sleeping = ai.is_sleeping
+        self.mood = ai.mood
+        self.last_updated_timestamp = ai.last_updated
+        
+        data = ai.state_data or {}
+        
+        self.libido_phase = data.get("libido_phase", 0.0)
+        self.libido_modifier = data.get("libido_modifier", 0.0)
+        self.interaction_count = data.get("interaction_count", 0)
+        self.joy = data.get("joy", 0.0)
+        self.stress = data.get("stress", 0.0)
+        self.irritability_mult = data.get("irritability_mult", 1.0)
+        self.affection_mult = data.get("affection_mult", 1.0)
+        self.laziness_mult = data.get("laziness_mult", 1.0)
+        self.core_memories = data.get("core_memories", [])
+        self.known_users = data.get("known_users", {})
+        self.inventory = data.get("inventory", [])
+        self.food_inventory = data.get("food_inventory", {})
+        self.item_inventory = data.get("item_inventory", {})
 
     @property
     def heart_rate(self) -> int:

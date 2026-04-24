@@ -1,5 +1,5 @@
-/* WebSocket hook for backend communication */
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws'
 
@@ -39,6 +39,7 @@ export type EconomyState = {
 export function useAIConnection() {
   const wsRef        = useRef<WebSocket | null>(null)
   const reconnectRef = useRef<ReturnType<typeof setTimeout>>()
+  const { token }    = useAuth()
 
   const [connected,  setConnected]  = useState(false)
   const [aiState,    setAiState]    = useState<AIState | null>(null)
@@ -54,9 +55,10 @@ export function useAIConnection() {
   }, [])
 
   const connect = useCallback(() => {
+    if (!token) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-    const ws = new WebSocket(WS_URL)
+    const ws = new WebSocket(`${WS_URL}?token=${token}`)
     wsRef.current = ws
 
     ws.onopen = () => {
@@ -123,7 +125,7 @@ export function useAIConnection() {
       clearTimeout(reconnectRef.current)
       wsRef.current?.close()
     }
-  }, [connect])
+  }, [connect, token])
 
   const sendMessage = useCallback((text: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

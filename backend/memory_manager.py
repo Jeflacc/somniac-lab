@@ -79,7 +79,7 @@ class MemoryManager:
             return ", ".join(results["documents"][0])
         return ""
         
-    def add_memory(self, role: str, text: str):
+    def add_memory(self, user_id: int, role: str, text: str):
         """
         Menyimpan interaksi (text) ke dalam memori.
         role bisa "user" atau "ai".
@@ -87,8 +87,8 @@ class MemoryManager:
         if not text.strip():
             return
             
-        doc_id = f"mem_{int(time.time() * 1000)}"
-        metadata = {"role": role, "timestamp": time.time()}
+        doc_id = f"mem_{user_id}_{int(time.time() * 1000)}"
+        metadata = {"role": role, "timestamp": time.time(), "user_id": user_id}
         
         self.collection.add(
             documents=[text],
@@ -96,7 +96,7 @@ class MemoryManager:
             ids=[doc_id]
         )
         
-    def search_memory(self, query: str, n_results: int = 1) -> list:
+    def search_memory(self, user_id: int, query: str, n_results: int = 1) -> list:
         """
         Melakukan pencarian semantik terhadap memori terdahulu yang mirip dengan query.
         """
@@ -109,12 +109,18 @@ class MemoryManager:
         if len(query.strip()) <= 5 and len(query.split()) <= 1:
             return []
             
-        # Kadang n_results bisa melebihi jumlah document, kita pastikan aman
-        safe_n_results = min(n_results, self.collection.count())
+        # Menghitung jumlah dokumen milik user ini
+        user_docs = self.collection.get(where={"user_id": user_id})
+        count = len(user_docs["ids"]) if user_docs and "ids" in user_docs else 0
+        if count == 0:
+            return []
+            
+        safe_n_results = min(n_results, count)
         
         results = self.collection.query(
             query_texts=[query],
-            n_results=safe_n_results
+            n_results=safe_n_results,
+            where={"user_id": user_id}
         )
         
         memories = []

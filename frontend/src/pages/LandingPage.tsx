@@ -31,7 +31,7 @@ export default function LandingPage() {
     >
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4"
-        style={{ borderBottom: '1px solid var(--border)', background: 'rgba(10,10,15,0.8)', backdropFilter: 'blur(12px)' }}
+        style={{ borderBottom: '1px solid var(--border)', background: 'rgba(226, 223, 218, 0.8)', backdropFilter: 'blur(12px)' }}
       >
         <div className="flex items-center gap-3">
           <EvelynEye size={28} />
@@ -44,7 +44,7 @@ export default function LandingPage() {
             to="/lab"
             style={{
               background: 'var(--accent)',
-              color: '#fff',
+              color: 'var(--bg-primary)',
               padding: '8px 18px',
               borderRadius: 8,
               fontSize: 14,
@@ -64,7 +64,7 @@ export default function LandingPage() {
         </div>
         <div
           className="badge mb-6"
-          style={{ background: 'var(--accent-glow)', color: 'var(--accent-2)', border: '1px solid rgba(167,139,250,0.3)' }}
+          style={{ background: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid var(--accent-glow)' }}
         >
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
           Live System Active
@@ -82,7 +82,7 @@ export default function LandingPage() {
           }}
         >
           Artificial Consciousness,{' '}
-          <span style={{ WebkitTextFillColor: 'var(--accent-2)' }}>Evolved.</span>
+          <span style={{ WebkitTextFillColor: 'var(--accent)' }}>Evolved.</span>
         </h1>
         <p
           style={{
@@ -101,7 +101,7 @@ export default function LandingPage() {
             to="/lab"
             style={{
               background: 'var(--accent)',
-              color: '#fff',
+              color: 'var(--bg-primary)',
               padding: '14px 32px',
               borderRadius: 12,
               fontWeight: 700,
@@ -195,10 +195,10 @@ function EvelynEye({ size = 40, animated = false }: { size?: number; animated?: 
       viewBox="0 0 100 100"
       style={{ animation: animated ? 'blink 4s infinite' : undefined }}
     >
-      <ellipse cx="50" cy="50" rx="44" ry="44" fill="none" stroke="#7c6aff" strokeWidth="4" />
-      <ellipse cx="50" cy="50" rx="26" ry="26" fill="#7c6aff" opacity="0.15" />
-      <circle cx="50" cy="50" r="18" fill="#7c6aff" />
-      <circle cx="50" cy="50" r="9" fill="#0a0a0f" />
+      <ellipse cx="50" cy="50" rx="44" ry="44" fill="none" stroke="var(--accent)" strokeWidth="4" />
+      <ellipse cx="50" cy="50" rx="26" ry="26" fill="var(--accent)" opacity="0.15" />
+      <circle cx="50" cy="50" r="18" fill="var(--accent)" />
+      <circle cx="50" cy="50" r="9" fill="var(--bg-primary)" />
       <circle cx="44" cy="44" r="4" fill="rgba(255,255,255,0.7)" />
     </svg>
   )

@@ -1,9 +1,8 @@
-import json
-import os
-import time
 import logging
+import time
 
-ECONOMY_FILE = os.path.join(os.path.dirname(__file__), "economy_state.json")
+import models
+from sqlalchemy.orm import Session
 
 class EconomyManager:
     """
@@ -11,7 +10,9 @@ class EconomyManager:
     Starting balance: Rp 50.000 (cukup buat belanja groceries beberapa kali).
     """
 
-    def __init__(self, starting_balance: float = 50_000.0):
+    def __init__(self, user_id: int, db: Session, starting_balance: float = 50_000.0):
+        self.user_id = user_id
+        self.db = db
         self.balance = starting_balance
         self.transaction_history: list[dict] = []
         self.load_state()
@@ -67,22 +68,23 @@ class EconomyManager:
 
     def save_state(self):
         try:
-            with open(ECONOMY_FILE, "w", encoding="utf-8") as f:
-                json.dump({
-                    "balance": self.balance,
-                    "transaction_history": self.transaction_history,
-                }, f, indent=2, ensure_ascii=False)
+            eco = self.db.query(models.Economy).filter(models.Economy.owner_id == self.user_id).first()
+            if not eco:
+                eco = models.Economy(owner_id=self.user_id)
+                self.db.add(eco)
+                
+            eco.balance = self.balance
+            eco.transaction_history = self.transaction_history
+            self.db.commit()
         except Exception as e:
             logging.error(f"[ECONOMY] save_state failed: {e}")
 
     def load_state(self):
-        if not os.path.exists(ECONOMY_FILE):
-            return
         try:
-            with open(ECONOMY_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            self.balance = data.get("balance", self.balance)
-            self.transaction_history = data.get("transaction_history", [])
-            logging.info(f"[ECONOMY] Loaded — Saldo: {self.get_balance_formatted()}")
+            eco = self.db.query(models.Economy).filter(models.Economy.owner_id == self.user_id).first()
+            if eco:
+                self.balance = eco.balance
+                self.transaction_history = eco.transaction_history or []
+                logging.info(f"[ECONOMY] Loaded — Saldo: {self.get_balance_formatted()}")
         except Exception as e:
             logging.error(f"[ECONOMY] load_state failed: {e}")

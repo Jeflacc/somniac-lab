@@ -5,18 +5,18 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary:   #0a0a0f;
-  --bg-secondary: #0f0f1a;
-  --bg-panel:     #12121f;
-  --bg-card:      #1a1a2e;
-  --border:       rgba(255,255,255,0.06);
-  --border-hover: rgba(255,255,255,0.12);
-  --text-primary: #e8e8f0;
-  --text-secondary: #8888aa;
-  --text-muted:   #555570;
-  --accent:       #7c6aff;
-  --accent-glow:  rgba(124, 106, 255, 0.2);
-  --accent-2:     #a78bfa;
+  --bg-primary:   #E2DFDA;
+  --bg-secondary: #D2C49E;
+  --bg-panel:     #CBDED3;
+  --bg-card:      #CBDED3;
+  --border:       rgba(59, 98, 85, 0.15);
+  --border-hover: rgba(59, 98, 85, 0.3);
+  --text-primary: #3B6255;
+  --text-secondary: #8BA49A;
+  --text-muted:   rgba(59, 98, 85, 0.6);
+  --accent:       #3B6255;
+  --accent-glow:  rgba(59, 98, 85, 0.15);
+  --accent-2:     #8BA49A;
   --green:        #34d399;
   --red:          #f87171;
   --yellow:       #fbbf24;
@@ -195,5 +195,5 @@ body {
 
 /* Landing sections */
 .hero-gradient {
-  background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124,106,255,0.25) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59, 98, 85, 0.25) 0%, transparent 70%);
 }
