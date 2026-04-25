@@ -16,6 +16,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depe
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+load_dotenv()
 from sqlalchemy.orm import Session
 
 # Database & Auth
@@ -71,7 +72,6 @@ try:
 except Exception as e:
     print(f"[MIGRATE] Migration check skipped: {e}")
 
-load_dotenv()
 
 API_PROVIDER  = os.getenv("API_PROVIDER", "groq")
 OLLAMA_HOST   = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")

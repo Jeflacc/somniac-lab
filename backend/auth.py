@@ -13,6 +13,9 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 import models
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
