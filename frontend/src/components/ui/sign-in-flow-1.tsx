@@ -482,6 +482,16 @@ export const SignInPage = ({ className, onSuccess, onBack, onSubmit, onVerify, i
     }
   }, [step]);
 
+  useEffect(() => {
+    if (step === "success") {
+      const timer = setTimeout(() => {
+        if (onSuccess) onSuccess();
+        window.location.href = "/lab";
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [step, onSuccess]);
+
   const handleCodeChange = (index: number, value: string) => {
     if (value.length <= 1) {
       const newCode = [...code];
@@ -490,21 +500,6 @@ export const SignInPage = ({ className, onSuccess, onBack, onSubmit, onVerify, i
       
       if (value && index < 5) {
         codeInputRefs.current[index + 1]?.focus();
-      }
-      
-      if (index === 5 && value) {
-        const isComplete = newCode.every(digit => digit.length === 1);
-        if (isComplete) {
-          setReverseCanvasVisible(true);
-          setTimeout(() => {
-            setInitialCanvasVisible(false);
-          }, 50);
-          
-          setTimeout(() => {
-            setStep("success");
-            if (onSuccess) onSuccess();
-          }, 2000);
-        }
       }
     }
   };
@@ -518,10 +513,17 @@ export const SignInPage = ({ className, onSuccess, onBack, onSubmit, onVerify, i
         const success = await onVerify(enteredCode);
         setInternalLoading(false);
         if (success) {
-          setStep("success");
+          // Smooth transition to success
+          setReverseCanvasVisible(true);
+          setTimeout(() => setInitialCanvasVisible(false), 50);
+          setTimeout(() => {
+            setStep("success");
+            if (onSuccess) onSuccess();
+          }, 1500);
         }
       } else {
         setStep("success");
+        if (onSuccess) onSuccess();
       }
     }
   };
@@ -787,7 +789,10 @@ export const SignInPage = ({ className, onSuccess, onBack, onSubmit, onVerify, i
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 1 }}
-                    onClick={() => window.location.href = '/lab'}
+                    onClick={() => {
+                      if (onSuccess) onSuccess();
+                      window.location.href = '/lab';
+                    }}
                     className="w-full rounded-full bg-white text-black font-medium py-3 hover:bg-white/90 transition-colors shadow-lg shadow-white/10"
                   >
                     Enter the Lab

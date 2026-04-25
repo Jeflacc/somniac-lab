@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^9.1.1",
     "@react-three/fiber": "^8.18.0",
     "@types/three": "^0.184.0",
     "clsx": "^2.1.1",

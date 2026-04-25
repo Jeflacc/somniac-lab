@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 # Database & Auth
 from database import engine, Base, SessionLocal, get_db, DB_PATH
 from auth import auth_router, get_current_user
+from payments import payments_router
 import models
 
 # Ensure tables exist
@@ -195,6 +196,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
+app.include_router(payments_router, prefix="/api/payments", tags=["Payments"])
 
 @app.get("/health")
 async def health():

@@ -106,6 +106,7 @@ export default function LandingPage() {
         <div className="flex items-center gap-6">
           <a href="#features" style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500 }} className="hover:text-black transition-colors">Features</a>
           <a href="#research" style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500 }} className="hover:text-black transition-colors">Research</a>
+          <Link to="/pricing" style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, textDecoration: 'none' }} className="hover:text-black transition-colors">Pricing</Link>
           <Link
             to="/auth"
             style={{

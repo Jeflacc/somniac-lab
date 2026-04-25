@@ -9,6 +9,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_verified = Column(Boolean, default=False)
+    is_pro = Column(Boolean, default=False)
     otp = Column(String, nullable=True)
     otp_expiry = Column(Float, nullable=True)
     

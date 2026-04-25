@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token]);
 
   const login = (newToken: string) => {
+    localStorage.setItem("somniac_token", newToken);
     setToken(newToken);
   };
 
