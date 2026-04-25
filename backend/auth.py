@@ -133,7 +133,15 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     ).first()
     
     if db_user:
-        if db_user.is_verified:
+        # Special case: account exists but has NO email (old account)
+        # We allow fixing it by registering again with the correct email
+        if db_user.email is None:
+            # Update email and password
+            db_user.email = user.email
+            db_user.hashed_password = get_password_hash(user.password)
+            # We don't change is_verified here, we still want them to verify the new email
+            db_user.is_verified = False
+        elif db_user.is_verified:
             if db_user.username == user.username:
                 raise HTTPException(status_code=400, detail="Username already registered")
             else:
