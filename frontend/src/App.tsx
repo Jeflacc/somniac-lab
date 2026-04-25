@@ -13,10 +13,11 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 }
 
 function AppRoutes() {
+  const { isAuthenticated } = useAuth()
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/auth" element={<AuthPage />} />
+      <Route path="/auth" element={isAuthenticated ? <Navigate to="/lab" replace /> : <AuthPage />} />
       <Route path="/lab/*" element={
         <ProtectedRoute>
           <LabPage />

@@ -88,7 +88,7 @@ async def send_otp_email(email: str, otp: str):
     
     data = {
         "from": "Somniac Lab <auth@somniac.me>",
-        "to": [email],
+        "to": email,
         "subject": f"{otp} is your Somniac Lab verification code",
         "html": html_content
     }
@@ -129,14 +129,16 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     ).first()
     
     if db_user:
-        # If user exists but is not verified, we can overwrite/update OTP
         if db_user.is_verified:
             if db_user.username == user.username:
                 raise HTTPException(status_code=400, detail="Username already registered")
             else:
                 raise HTTPException(status_code=400, detail="Email already registered")
         else:
-            # Update password if it changed during retry
+            # If exists but not verified, check if it's the SAME username
+            if db_user.username != user.username:
+                raise HTTPException(status_code=400, detail="Email already taken by another pending account")
+            # Update password for retry
             db_user.hashed_password = get_password_hash(user.password)
     else:
         hashed_password = get_password_hash(user.password)
@@ -158,7 +160,11 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
 
 @auth_router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    # Allow login with username OR email
+    user = db.query(models.User).filter(
+        (models.User.username == form_data.username) | (models.User.email == form_data.username)
+    ).first()
+    
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
