@@ -86,12 +86,16 @@ async def send_otp_email(email: str, otp: str):
     </div>
     """
     
+    print(f"[DEBUG RESEND] Sending to: {email} (type: {type(email)})")
+    
     data = {
-        "from": "Somniac Lab <auth@somniac.me>",
+        "from": "auth@somniac.me",
         "to": email,
         "subject": f"{otp} is your Somniac Lab verification code",
         "html": html_content
     }
+    
+    print(f"[DEBUG RESEND] Payload: {data}")
     
     async with httpx.AsyncClient() as client:
         try:
