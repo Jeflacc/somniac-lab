@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
+import { useAuth } from '../contexts/AuthContext'
 import { useAIConnection, type Message, type AIState } from '../hooks/useAIConnection'
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
@@ -283,6 +284,7 @@ function barColor(v: number): string {
 
 /* ── Main Lab Page ───────────────────────────────────────────────────────── */
 export default function LabPage() {
+  const { logout } = useAuth()
   const { connected, aiState, houseState, economy, messages, isThinking, streamBuffer, qrString, sendMessage, sendCommand, generateQr } = useAIConnection()
   const [input, setInput] = useState('')
   const [currentTab, setCurrentTab] = useState<'chat' | 'settings'>('chat')
@@ -364,6 +366,7 @@ export default function LabPage() {
         </div>
 
         {/* AI info at bottom */}
+        {/* AI info at bottom */}
         <div style={{ marginTop: 'auto', padding: '12px', background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)' }}>
           {aiState && (
             <>
@@ -372,6 +375,23 @@ export default function LabPage() {
             </>
           )}
         </div>
+
+        {/* Logout at bottom */}
+        <button 
+          onClick={logout}
+          className="sidebar-item"
+          style={{ 
+            marginTop: 8, 
+            background: 'rgba(248,113,113,0.05)', 
+            color: '#f87171', 
+            border: '1px solid rgba(248,113,113,0.1)',
+            cursor: 'pointer',
+            width: '100%',
+            textAlign: 'left'
+          }}
+        >
+          <span>🚪</span> Logout
+        </button>
       </aside>
 
       {/* ── Center: Chat ─────────────────────────────────────────────────── */}

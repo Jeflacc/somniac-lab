@@ -187,7 +187,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 @auth_router.post("/verify-otp", response_model=Token)
 async def verify_otp(req: VerifyRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == req.username).first()
+    # Allow verification with username OR email
+    user = db.query(models.User).filter(
+        (models.User.username == req.username) | (models.User.email == req.username)
+    ).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
