@@ -664,7 +664,7 @@ export const SignInPage = ({ className, onSuccess, onBack, onSubmit, onVerify, i
                     
                     <button 
                       onClick={() => setIsLogin(!isLogin)}
-                      className="text-white/40 hover:text-white/60 text-sm transition-colors"
+                      className="text-white/60 hover:text-white text-sm transition-colors mt-4 font-medium"
                     >
                       {isLogin ? "Need an account? Register" : "Already have an account? Login"}
                     </button>
@@ -685,7 +685,7 @@ export const SignInPage = ({ className, onSuccess, onBack, onSubmit, onVerify, i
                   <form onSubmit={handleCodeSubmit} className="space-y-6 text-center">
                     <div className="space-y-1">
                       <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">Security Check</h1>
-                      <p className="text-[1.25rem] text-white/50 font-light">Verify your identity</p>
+                      <p className="text-[1.1rem] text-white/50 font-light">Enter the 6-digit code sent to your email</p>
                     </div>
                     
                     <div className="w-full">
