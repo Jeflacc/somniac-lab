@@ -19,27 +19,27 @@ class EconomyManager:
 
     # ─────────────── Public API ───────────────
 
-    def add_balance(self, amount: float, reason: str = "Top-up dari Vathir") -> float:
-        """Tambah saldo AI. Returns saldo baru."""
+    def add_balance(self, amount: float, reason: str = "Top-up from Vathir") -> float:
+        """Add AI balance. Returns new balance."""
         self.balance += amount
         self._log_tx(f"+Rp {amount:,.0f}", reason, self.balance)
         self.save_state()
         logging.info(f"[ECONOMY] Top-up Rp {amount:,.0f} ({reason})")
         return self.balance
 
-    def spend(self, amount: float, reason: str = "Belanja") -> bool:
+    def spend(self, amount: float, reason: str = "Shopping") -> bool:
         """
-        Kurangi saldo. Returns True kalau berhasil, False kalau saldo kurang.
+        Deduct balance. Returns True if successful, False if insufficient.
         """
         if self.balance < amount:
             logging.warning(
-                f"[ECONOMY] Saldo tidak cukup: Rp {self.balance:,.0f} < Rp {amount:,.0f}"
+                f"[ECONOMY] Insufficient balance: Rp {self.balance:,.0f} < Rp {amount:,.0f}"
             )
             return False
         self.balance -= amount
         self._log_tx(f"-Rp {amount:,.0f}", reason, self.balance)
         self.save_state()
-        logging.info(f"[ECONOMY] Spent Rp {amount:,.0f} ({reason}) → Sisa: Rp {self.balance:,.0f}")
+        logging.info(f"[ECONOMY] Spent Rp {amount:,.0f} ({reason}) → Remaining: Rp {self.balance:,.0f}")
         return True
 
     def get_balance_formatted(self) -> str:

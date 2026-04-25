@@ -16,9 +16,12 @@ class StreamingTagFilter:
     - Semua karakter dibuang sampai `[/PIKIR]` ditemukan
     """
 
-    SYSTEM_TAG_PREFIXES = ["[CATAT", "[INGAT", "[STIKER"]
-    BLOCK_OPEN  = "[PIKIR]"
-    BLOCK_CLOSE = "[/PIKIR]"
+    SYSTEM_TAG_PREFIXES = ["[CATAT", "[INGAT", "[STIKER", "[LOG", "[REMEMBER", "[STICKER"]
+    BLOCK_OPEN  = "[THINK]"
+    BLOCK_CLOSE = "[/THINK]"
+    # Legacy support
+    LEGACY_BLOCK_OPEN = "[PIKIR]"
+    LEGACY_BLOCK_CLOSE = "[/PIKIR]"
     MAX_TAG_BUFFER = 350
 
     def __init__(self):
@@ -31,45 +34,45 @@ class StreamingTagFilter:
         output = ""
         for char in chunk:
 
-            # ── Mode block suppress ([PIKIR]...[/PIKIR]) ──
+            # ── Block suppress mode ([THINK]...[/THINK]) ──
             if self._block_suppressing:
                 self._block_buf += char
-                # Cek apakah BLOCK_CLOSE sudah lengkap
-                if self._block_buf.endswith(self.BLOCK_CLOSE):
-                    # Selesai, keluar dari block mode
+                # Check if BLOCK_CLOSE or LEGACY_BLOCK_CLOSE is complete
+                if self._block_buf.endswith(self.BLOCK_CLOSE) or self._block_buf.endswith(self.LEGACY_BLOCK_CLOSE):
+                    # Done, exit block mode
                     self._block_suppressing = False
                     self._block_buf = ""
                 elif len(self._block_buf) > 5000:
-                    # Safety: kalau tidak ada penutup, reset
+                    # Safety: if no closing tag, reset
                     self._block_suppressing = False
                     self._block_buf = ""
-                continue  # selalu buang karakter dalam block
+                continue  # always discard chars inside block
 
-            # ── Mode buffering (awal `[`) ──
+            # ── Buffering mode (starts with `[`) ──
             if self._buffering:
                 self._buffer += char
 
                 if char == "]":
                     buf_upper = self._buffer.upper()
 
-                    # Cek apakah ini [PIKIR] opening tag
-                    if self._buffer == self.BLOCK_OPEN:
+                    # Check for [THINK] or [PIKIR] opening tag
+                    if self._buffer == self.BLOCK_OPEN or self._buffer == self.LEGACY_BLOCK_OPEN:
                         self._buffer = ""
                         self._buffering = False
                         self._block_suppressing = True
                         self._block_buf = ""
                     elif any(buf_upper.startswith(p) for p in self.SYSTEM_TAG_PREFIXES):
-                        # Single-line system tag → buang
+                        # Single-line system tag → discard
                         self._buffer = ""
                         self._buffering = False
                     else:
-                        # Bukan tag sistem → flush sebagai teks biasa
+                        # Not a system tag → flush as normal text
                         output += self._buffer
                         self._buffer = ""
                         self._buffering = False
 
                 elif len(self._buffer) > self.MAX_TAG_BUFFER:
-                    # Terlalu panjang → bukan tag, flush
+                    # Too long → not a tag, flush
                     output += self._buffer
                     self._buffer = ""
                     self._buffering = False
@@ -84,8 +87,8 @@ class StreamingTagFilter:
         return output
 
     def flush(self) -> str:
-        """Panggil di akhir stream untuk mengeluarkan sisa buffer."""
-        # Kalau masih block-suppressing, buang saja
+        """Call at the end of stream to flush remaining buffer."""
+        # If still block-suppressing, just discard
         if self._block_suppressing:
             self._block_suppressing = False
             self._block_buf = ""
@@ -100,7 +103,7 @@ class StreamingTagFilter:
         buf_upper = remaining.upper()
         if any(buf_upper.startswith(p) for p in self.SYSTEM_TAG_PREFIXES):
             return ""
-        if remaining == self.BLOCK_OPEN:
+        if remaining == self.BLOCK_OPEN or remaining == self.LEGACY_BLOCK_OPEN:
             return ""
         return remaining
 

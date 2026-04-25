@@ -9,45 +9,45 @@ from sqlalchemy.orm import Session
 # ─────────────── Room & Item Definitions ───────────────
 ROOM_DEFINITIONS = {
     "kamar_tidur": {
-        "name": "Kamar Tidur", "emoji": "🛏️",
+        "name": "Bedroom", "emoji": "🛏️",
         "items": {
-            "kasur":   {"emoji": "🛏️", "state": "idle",   "label": "Kasur"},
+            "kasur":   {"emoji": "🛏️", "state": "idle",   "label": "Bed"},
             "console": {"emoji": "🎮", "state": "off",    "label": "PS5"},
-            "hp":      {"emoji": "📱", "state": "idle",   "label": "HP"},
-            "cermin":  {"emoji": "🪞", "state": "idle",   "label": "Cermin"},
-            "lemari":  {"emoji": "🚪", "state": "closed", "label": "Lemari Baju"},
+            "hp":      {"emoji": "📱", "state": "idle",   "label": "Phone"},
+            "cermin":  {"emoji": "🪞", "state": "idle",   "label": "Mirror"},
+            "lemari":  {"emoji": "🚪", "state": "closed", "label": "Wardrobe"},
         }
     },
     "kamar_mandi": {
-        "name": "Kamar Mandi", "emoji": "🚿",
+        "name": "Bathroom", "emoji": "🚿",
         "items": {
             "shower":      {"emoji": "🚿", "state": "off",  "label": "Shower"},
-            "wastafel_km": {"emoji": "🪥", "state": "idle", "label": "Wastafel"},
-            "cermin_km":   {"emoji": "🪞", "state": "idle", "label": "Cermin"},
+            "wastafel_km": {"emoji": "🪥", "state": "idle", "label": "Washbasin"},
+            "cermin_km":   {"emoji": "🪞", "state": "idle", "label": "Mirror"},
         }
     },
     "dapur": {
-        "name": "Dapur", "emoji": "🍳",
+        "name": "Kitchen", "emoji": "🍳",
         "items": {
-            "kompor":    {"emoji": "🍳", "state": "off",    "label": "Kompor"},
-            "piring":    {"emoji": "🍽️", "state": "bersih", "label": "Piring"},
-            "wastafel":  {"emoji": "🪣", "state": "off",    "label": "Wastafel"},
-            "kulkas":    {"emoji": "🧊", "state": "idle",   "label": "Kulkas"},
+            "kompor":    {"emoji": "🍳", "state": "off",    "label": "Stove"},
+            "piring":    {"emoji": "🍽️", "state": "clean",  "label": "Plate"},
+            "wastafel":  {"emoji": "🪣", "state": "off",    "label": "Sink"},
+            "kulkas":    {"emoji": "🧊", "state": "idle",   "label": "Fridge"},
         }
     },
     "ruang_tamu": {
-        "name": "Ruang Tamu", "emoji": "🛋️",
+        "name": "Living Room", "emoji": "🛋️",
         "items": {
             "tv":      {"emoji": "📺", "state": "off",  "label": "TV"},
             "sofa":    {"emoji": "🛋️", "state": "idle", "label": "Sofa"},
-            "tanaman": {"emoji": "🪴", "state": "idle", "label": "Tanaman"},
+            "tanaman": {"emoji": "🪴", "state": "idle", "label": "Plant"},
         }
     },
     "area_cuci": {
-        "name": "Area Cuci", "emoji": "🫧",
+        "name": "Laundry Area", "emoji": "🫧",
         "items": {
-            "mesin_cuci": {"emoji": "🫧", "state": "off",    "label": "Mesin Cuci"},
-            "jemuran":    {"emoji": "👗", "state": "kosong", "label": "Jemuran"},
+            "mesin_cuci": {"emoji": "🫧", "state": "off",    "label": "Washing Machine"},
+            "jemuran":    {"emoji": "👗", "state": "empty",  "label": "Clothes Rack"},
         }
     }
 }
@@ -55,167 +55,159 @@ ROOM_DEFINITIONS = {
 # ─────────────── Chore Definitions ───────────────
 CHORE_DEFINITIONS = {
     "eat": {
-        "name": "Masak & Makan", "emoji": "🍳",
+        "name": "Cook & Eat", "emoji": "🍳",
         "steps": [
-            {"label": "Pergi ke dapur",             "room": "dapur", "duration": 12},
-            {"label": "Ambil bahan dari kulkas",    "room": "dapur", "duration": 15, "item": "kulkas",   "item_state": "open"},
-            {"label": "Mulai masak",                "room": "dapur", "duration": 60, "item": "kompor",   "item_state": "cooking"},
-            {"label": "Siapkan piring, matiin kompor", "room": "dapur", "duration": 15, "item": "piring", "item_state": "dipakai"},
-            {"label": "Makan",                      "room": "dapur", "duration": 90, "item": "kompor",   "item_state": "off"},
-            {"label": "Cuci piring",                "room": "dapur", "duration": 40, "item": "wastafel", "item_state": "running"},
-            {"label": "Bereskan dapur",             "room": "dapur", "duration": 12, "item": "piring",   "item_state": "bersih"},
+            {"label": "Go to kitchen",             "room": "dapur", "duration": 12},
+            {"label": "Get ingredients from fridge", "room": "dapur", "duration": 15, "item": "kulkas",   "item_state": "open"},
+            {"label": "Start cooking",              "room": "dapur", "duration": 60, "item": "kompor",   "item_state": "cooking"},
+            {"label": "Prep plate, turn off stove", "room": "dapur", "duration": 15, "item": "piring", "item_state": "in_use"},
+            {"label": "Eat",                       "room": "dapur", "duration": 90, "item": "kompor",   "item_state": "off"},
+            {"label": "Wash dishes",               "room": "dapur", "duration": 40, "item": "wastafel", "item_state": "running"},
+            {"label": "Clean up kitchen",          "room": "dapur", "duration": 12, "item": "piring",   "item_state": "clean"},
         ],
         "on_complete": "hunger_reset",
-        "journal_text": "Masak sendiri dan makan, lumayan hasilnya",
-        "journal_category": "makan"
+        "journal_text": "Cooked for myself and ate, result was pretty good",
+        "journal_category": "eat"
     },
     "mandi": {
-        "name": "Mandi", "emoji": "🚿",
+        "name": "Shower", "emoji": "🚿",
         "steps": [
-            {"label": "Ke kamar mandi",            "room": "kamar_mandi", "duration": 10},
-            {"label": "Nyalain shower",             "room": "kamar_mandi", "duration": 10, "item": "shower", "item_state": "on"},
-            {"label": "Mandi",                      "room": "kamar_mandi", "duration": 120, "item": "shower", "item_state": "running"},
-            {"label": "Matiin shower, keringin",    "room": "kamar_mandi", "duration": 15, "item": "shower", "item_state": "off"},
+            {"label": "Go to bathroom",            "room": "kamar_mandi", "duration": 10},
+            {"label": "Turn on shower",            "room": "kamar_mandi", "duration": 10, "item": "shower", "item_state": "on"},
+            {"label": "Shower",                    "room": "kamar_mandi", "duration": 120, "item": "shower", "item_state": "running"},
+            {"label": "Turn off shower, dry up",   "room": "kamar_mandi", "duration": 15, "item": "shower", "item_state": "off"},
         ],
         "on_complete": "shower_done",
-        "journal_text": "Udah mandi, seger banget",
-        "journal_category": "kejadian"
+        "journal_text": "Just showered, feeling fresh",
+        "journal_category": "event"
     },
     "ganti_baju": {
-        "name": "Ganti Baju", "emoji": "👗",
+        "name": "Change Clothes", "emoji": "👗",
         "steps": [
-            {"label": "Ke kamar tidur",                 "room": "kamar_tidur", "duration": 10},
-            {"label": "Buka lemari, pilih baju",        "room": "kamar_tidur", "duration": 20, "item": "lemari", "item_state": "open"},
-            {"label": "Ganti baju",                     "room": "kamar_tidur", "duration": 25, "item": "lemari", "item_state": "closed"},
+            {"label": "Go to bedroom",                 "room": "kamar_tidur", "duration": 10},
+            {"label": "Open wardrobe, pick clothes",   "room": "kamar_tidur", "duration": 20, "item": "lemari", "item_state": "open"},
+            {"label": "Change clothes",                "room": "kamar_tidur", "duration": 25, "item": "lemari", "item_state": "closed"},
         ],
         "on_complete": "clothes_dirty",
-        "journal_text": "Ganti baju, sekarang pake baju bersih",
-        "journal_category": "kejadian"
+        "journal_text": "Changed clothes, wearing clean ones now",
+        "journal_category": "event"
     },
     "cuci_piring": {
-        "name": "Cuci Piring", "emoji": "🧹",
+        "name": "Wash Dishes", "emoji": "🧹",
         "steps": [
-            {"label": "Ke dapur",                  "room": "dapur", "duration": 10},
-            {"label": "Bilas piring",               "room": "dapur", "duration": 15, "item": "wastafel", "item_state": "on"},
-            {"label": "Cuci piring",                "room": "dapur", "duration": 50, "item": "wastafel", "item_state": "running"},
-            {"label": "Piring udah bersih",         "room": "dapur", "duration": 10, "item": "piring",   "item_state": "bersih"},
+            {"label": "Go to kitchen",                  "room": "dapur", "duration": 10},
+            {"label": "Rinse plates",                   "room": "dapur", "duration": 15, "item": "wastafel", "item_state": "on"},
+            {"label": "Wash dishes",                    "room": "dapur", "duration": 50, "item": "wastafel", "item_state": "running"},
+            {"label": "Plates are clean",               "room": "dapur", "duration": 10, "item": "piring",   "item_state": "clean"},
         ],
-        "journal_text": "Cuci piring selesai, dapur bersih lagi",
-        "journal_category": "kejadian"
+        "journal_text": "Dishes done, kitchen is clean again",
+        "journal_category": "event"
     },
     "sleep_routine": {
-        "name": "Rutinitas Tidur", "emoji": "🌙",
+        "name": "Sleep Routine", "emoji": "🌙",
         "steps": [
-            {"label": "Ke kamar mandi buat mandi malem", "room": "kamar_mandi", "duration": 10},
-            {"label": "Mandi malem",                     "room": "kamar_mandi", "duration": 90, "item": "shower",  "item_state": "running"},
-            {"label": "Keringkan badan",                 "room": "kamar_mandi", "duration": 15, "item": "shower",  "item_state": "off"},
-            {"label": "Ke kamar, ganti piyama",          "room": "kamar_tidur", "duration": 20, "item": "lemari",  "item_state": "closed"},
-            {"label": "Rebahan di kasur",                "room": "kamar_tidur", "duration": 15, "item": "kasur",   "item_state": "sleeping"},
+            {"label": "Go to bathroom for night shower", "room": "kamar_mandi", "duration": 10},
+            {"label": "Night shower",                     "room": "kamar_mandi", "duration": 90, "item": "shower",  "item_state": "running"},
+            {"label": "Dry body",                         "room": "kamar_mandi", "duration": 15, "item": "shower",  "item_state": "off"},
+            {"label": "Go to bedroom, change to pjs",      "room": "kamar_tidur", "duration": 20, "item": "lemari",  "item_state": "closed"},
+            {"label": "Lay on bed",                        "room": "kamar_tidur", "duration": 15, "item": "kasur",   "item_state": "sleeping"},
         ],
         "on_complete": "sleep",
-        "journal_text": "Mandi malem, ganti piyama, terus tidur",
-        "journal_category": "tidur"
+        "journal_text": "Night shower, changed to pjs, then sleep",
+        "journal_category": "sleep"
     },
     "wake_routine": {
-        "name": "Rutinitas Bangun", "emoji": "☀️",
+        "name": "Wake Up Routine", "emoji": "☀️",
         "steps": [
-            {"label": "Bangun dari kasur",          "room": "kamar_tidur", "duration": 20, "item": "kasur",      "item_state": "idle"},
-            {"label": "Cuci muka",                  "room": "kamar_mandi", "duration": 30, "item": "wastafel_km","item_state": "running"},
-            {"label": "Ganti baju pagi",            "room": "kamar_tidur", "duration": 25, "item": "lemari",     "item_state": "closed"},
+            {"label": "Wake up from bed",           "room": "kamar_tidur", "duration": 20, "item": "kasur",      "item_state": "idle"},
+            {"label": "Wash face",                  "room": "kamar_mandi", "duration": 30, "item": "wastafel_km","item_state": "running"},
+            {"label": "Change morning clothes",     "room": "kamar_tidur", "duration": 25, "item": "lemari",     "item_state": "closed"},
         ],
         "on_complete": "wake",
-        "journal_text": "Bangun, cuci muka, ganti baju, siap mulai hari",
-        "journal_category": "tidur"
+        "journal_text": "Woke up, washed face, changed clothes, ready to start the day",
+        "journal_category": "sleep"
     },
     "laundry": {
-        "name": "Cuci Baju", "emoji": "👕",
+        "name": "Doing Laundry", "emoji": "👕",
         "steps": [
-            {"label": "Kumpulin baju kotor",         "room": "kamar_tidur", "duration": 15},
-            {"label": "Ke area cuci",                "room": "area_cuci",   "duration": 10},
-            {"label": "Masukin ke mesin cuci",       "room": "area_cuci",   "duration": 15, "item": "mesin_cuci", "item_state": "running"},
-            {"label": "Tunggu mesin cuci",           "room": "area_cuci",   "duration": 90, "item": "mesin_cuci", "item_state": "running"},
-            {"label": "Jemur baju",                  "room": "area_cuci",   "duration": 25, "item": "jemuran",    "item_state": "ada_baju"},
-            {"label": "Matiin mesin cuci",           "room": "area_cuci",   "duration": 8,  "item": "mesin_cuci", "item_state": "off"},
+            {"label": "Gather dirty clothes",         "room": "kamar_tidur", "duration": 15},
+            {"label": "Go to laundry area",           "room": "area_cuci",   "duration": 10},
+            {"label": "Put in washing machine",       "room": "area_cuci",   "duration": 15, "item": "mesin_cuci", "item_state": "running"},
+            {"label": "Wait for washing machine",     "room": "area_cuci",   "duration": 90, "item": "mesin_cuci", "item_state": "running"},
+            {"label": "Hang clothes",                  "room": "area_cuci",   "duration": 25, "item": "jemuran",    "item_state": "has_clothes"},
+            {"label": "Turn off washing machine",      "room": "area_cuci",   "duration": 8,  "item": "mesin_cuci", "item_state": "off"},
         ],
         "on_complete": "laundry_done",
-        "journal_text": "Cuci baju selesai, udah dijemur nih",
-        "journal_category": "kejadian"
+        "journal_text": "Laundry finished, hung them out to dry",
+        "journal_category": "event"
     },
 
-    # ── check_wa: flow baru yang realistis ──
-    # Step 0: Ambil HP           → masuk kamar, buka HP
-    # Step 1: Buka WA, baca      → MARK READ di sini
-    # Step 2: Mikirin balesan... → trigger LLM ke wa_ready_queue + set_typing(True)
-    # Step 3: Ngetik balesan...  → BLOK sampai LLM selesai & pesan terkirim (wait_for_reply_sent)
-    # Step 4: Pegang HP, nunggu  → tahan HP 60 dtk; kalau Vathir balas, loncat balik ke step 2
-    # Step 5: Letakkan HP        → selesai
     "check_wa": {
-        "name": "Cek WhatsApp", "emoji": "📱",
-        "mark_read_on_step": 1,   # mark_read dipanggil saat step 1 selesai
-        "wa_reply_on_step": 2,    # LLM di-trigger saat step 2 selesai
-        "wa_hold_step": 4,        # index step "pegang HP, nunggu"
+        "name": "Check WhatsApp", "emoji": "📱",
+        "mark_read_on_step": 1,
+        "wa_reply_on_step": 2,
+        "wa_hold_step": 4,
         "steps": [
-            {"label": "Ke kamar, ambil HP",         "room": "kamar_tidur", "duration": 10, "item": "hp", "item_state": "open"},
-            {"label": "Buka WhatsApp, baca pesan",  "room": "kamar_tidur", "duration": 10, "item": "hp", "item_state": "texting"},
-            {"label": "Mikirin balesan...",          "room": "kamar_tidur", "duration": 5,  "item": "hp", "item_state": "texting"},
-            {"label": "Lagi ngetik balesan...",      "room": "kamar_tidur", "duration": 5,  "item": "hp", "item_state": "texting",
-             "wait_for_reply_sent": True},  # step ini BLOK sampai wa_reply_sent=True
-            {"label": "Pegang HP, nunggu balesan",  "room": "kamar_tidur", "duration": 60, "item": "hp", "item_state": "texting"},
-            {"label": "Letakkan HP",                "room": "kamar_tidur", "duration": 5,  "item": "hp", "item_state": "idle"},
+            {"label": "Go to bedroom, get phone",   "room": "kamar_tidur", "duration": 10, "item": "hp", "item_state": "open"},
+            {"label": "Open WhatsApp, read messages", "room": "kamar_tidur", "duration": 10, "item": "hp", "item_state": "texting"},
+            {"label": "Thinking of a reply...",      "room": "kamar_tidur", "duration": 5,  "item": "hp", "item_state": "texting"},
+            {"label": "Typing reply...",             "room": "kamar_tidur", "duration": 5,  "item": "hp", "item_state": "texting",
+             "wait_for_reply_sent": True},
+            {"label": "Holding phone, waiting",     "room": "kamar_tidur", "duration": 60, "item": "hp", "item_state": "texting"},
+            {"label": "Put phone away",             "room": "kamar_tidur", "duration": 5,  "item": "hp", "item_state": "idle"},
         ],
-        "journal_category": "percakapan"
+        "journal_category": "conversation"
     },
 
     "play_console": {
-        "name": "Main Game Console", "emoji": "🎮",
+        "name": "Play Game Console", "emoji": "🎮",
         "steps": [
-            {"label": "Ke kamar, ambil controller",  "room": "kamar_tidur", "duration": 10},
-            {"label": "Hidupkan PS5",                "room": "kamar_tidur", "duration": 15, "item": "console", "item_state": "on"},
-            {"label": "Seru-seruan main game",       "room": "kamar_tidur", "duration": 300, "item": "console", "item_state": "playing"},
-            {"label": "Selesai main, matiin console","room": "kamar_tidur", "duration": 10, "item": "console", "item_state": "off"},
+            {"label": "Go to bedroom, get controller",  "room": "kamar_tidur", "duration": 10},
+            {"label": "Turn on PS5",                    "room": "kamar_tidur", "duration": 15, "item": "console", "item_state": "on"},
+            {"label": "Having fun playing games",       "room": "kamar_tidur", "duration": 300, "item": "console", "item_state": "playing"},
+            {"label": "Done playing, turn off console", "room": "kamar_tidur", "duration": 10, "item": "console", "item_state": "off"},
         ],
         "on_complete": "boredom_reduce",
         "send_wa_notif": True,
-        "wa_notif_text": "btw gw lagi main ps5 nih, bosen nunggu lu bales 😤🎮",
-        "journal_text": "Main PS5 sendirian buat ngilangin bosen",
-        "journal_category": "kejadian"
+        "wa_notif_text": "btw i'm playing ps5 right now, got bored waiting for you 😤🎮",
+        "journal_text": "Played PS5 alone to get rid of boredom",
+        "journal_category": "event"
     },
     "watch_tv": {
-        "name": "Nonton TV", "emoji": "📺",
+        "name": "Watch TV", "emoji": "📺",
         "steps": [
-            {"label": "Ke ruang tamu",               "room": "ruang_tamu", "duration": 10},
-            {"label": "Nyalain TV, duduk di sofa",   "room": "ruang_tamu", "duration": 10, "item": "tv", "item_state": "on"},
-            {"label": "Nonton TV",                   "room": "ruang_tamu", "duration": 180, "item": "tv", "item_state": "on"},
-            {"label": "Matiin TV",                   "room": "ruang_tamu", "duration": 5,  "item": "tv", "item_state": "off"},
+            {"label": "Go to living room",           "room": "ruang_tamu", "duration": 10},
+            {"label": "Turn on TV, sit on sofa",     "room": "ruang_tamu", "duration": 10, "item": "tv", "item_state": "on"},
+            {"label": "Watching TV",                 "room": "ruang_tamu", "duration": 180, "item": "tv", "item_state": "on"},
+            {"label": "Turn off TV",                 "room": "ruang_tamu", "duration": 5,  "item": "tv", "item_state": "off"},
         ],
         "on_complete": "boredom_reduce",
-        "journal_text": "Nonton TV di ruang tamu buat ngusir bosen",
-        "journal_category": "kejadian"
+        "journal_text": "Watched TV in the living room to escape boredom",
+        "journal_category": "event"
     },
     "wander": {
-        "name": "Jalan-Jalan", "emoji": "🚶",
+        "name": "Wander Around", "emoji": "🚶",
         "steps": [
-            {"label": "Jalan ke ruang tamu",  "room": "ruang_tamu",  "duration": 30},
-            {"label": "Intip isi dapur",       "room": "dapur",       "duration": 20},
-            {"label": "Balik ke kamar",        "room": "kamar_tidur", "duration": 20},
+            {"label": "Walk to living room",  "room": "ruang_tamu",  "duration": 30},
+            {"label": "Peek into kitchen",    "room": "dapur",       "duration": 20},
+            {"label": "Go back to bedroom",   "room": "kamar_tidur", "duration": 20},
         ],
-        "journal_text": "Jalan-jalan keliling rumah ga ada kerjaan, iseng aja",
-        "journal_category": "kejadian"
+        "journal_text": "Walking around the house with nothing to do, just bored",
+        "journal_category": "event"
     },
 
-    # ── Belanja online: AI beli bahan / barang lewat HP/laptop ──
     "online_shopping": {
-        "name": "Belanja Online", "emoji": "🛒",
+        "name": "Online Shopping", "emoji": "🛒",
         "steps": [
-            {"label": "Ambil HP, buka aplikasi belanja",  "room": "kamar_tidur", "duration": 15, "item": "hp", "item_state": "open"},
-            {"label": "Browsing toko online...",           "room": "kamar_tidur", "duration": 25, "item": "hp", "item_state": "texting"},
-            {"label": "Milih-milih produk yang mau dibeli","room": "kamar_tidur", "duration": 30, "item": "hp", "item_state": "texting"},
-            {"label": "Checkout & bayar!",                 "room": "kamar_tidur", "duration": 15, "item": "hp", "item_state": "texting"},
-            {"label": "Nunggu kurir dateng...",            "room": "kamar_tidur", "duration": 90, "item": "hp", "item_state": "idle"},
+            {"label": "Get phone, open shopping app",   "room": "kamar_tidur", "duration": 15, "item": "hp", "item_state": "open"},
+            {"label": "Browsing online stores...",      "room": "kamar_tidur", "duration": 25, "item": "hp", "item_state": "texting"},
+            {"label": "Picking products to buy",        "room": "kamar_tidur", "duration": 30, "item": "hp", "item_state": "texting"},
+            {"label": "Checkout & pay!",                "room": "kamar_tidur", "duration": 15, "item": "hp", "item_state": "texting"},
+            {"label": "Waiting for delivery...",         "room": "kamar_tidur", "duration": 90, "item": "hp", "item_state": "idle"},
         ],
         "on_complete": "shopping_done",
-        "journal_text": "Belanja online, barang udah diterima dari kurir",
-        "journal_category": "kejadian"
+        "journal_text": "Online shopping, items received from courier",
+        "journal_category": "event"
     },
 }
 
@@ -543,19 +535,19 @@ class HouseManager:
             steps_labels = [s["label"] for s in steps_def]
         else:
             total_steps = 0
-            step_label = "Santai aja di rumah"
+            step_label = "Chilling at home"
             step_progress = 0.0
             steps_labels = []
 
         lc = self.dirty_laundry_count
         if lc == 0:
-            laundry_label = "Bersih semua ✅"
+            laundry_label = "All clean ✅"
         elif lc <= 3:
-            laundry_label = f"{lc} helai kotor 👕"
+            laundry_label = f"{lc} items dirty 👕"
         elif lc <= 7:
-            laundry_label = f"{lc} helai kotor — mulai numpuk ⚠️"
+            laundry_label = f"{lc} items dirty — starting to pile up ⚠️"
         else:
-            laundry_label = f"{lc} helai kotor — PARAH 😤"
+            laundry_label = f"{lc} items dirty — DISASTER 😤"
 
         return {
             "current_room": self.current_room,
@@ -604,9 +596,9 @@ class HouseManager:
             step_label = ""
             if self.chore_step_index < len(steps_def):
                 step_label = steps_def[self.chore_step_index]["label"]
-            chore_info = f"Sedang: {self.current_chore['name']} — {step_label} (step {self.chore_step_index + 1}/{len(steps_def)})"
+            chore_info = f"Current Activity: {self.current_chore['name']} — {step_label} (step {self.chore_step_index + 1}/{len(steps_def)})"
         else:
-            chore_info = "Sedang: Idle / Tidak ada kegiatan"
+            chore_info = "Current Activity: Idle / Just chilling"
 
         queue_str = ""
         if self.chore_queue:
@@ -614,36 +606,36 @@ class HouseManager:
                 CHORE_DEFINITIONS[q["id"]]["name"]
                 for q in self.chore_queue if q["id"] in CHORE_DEFINITIONS
             ]
-            queue_str = f"\n- Antrian berikutnya: {', '.join(queue_names)}"
+            queue_str = f"\n- Next in queue: {', '.join(queue_names)}"
 
         hp_state = self.rooms.get("kamar_tidur", {}).get("items", {}).get("hp", {}).get("state", "idle")
         console_state = self.rooms.get("kamar_tidur", {}).get("items", {}).get("console", {}).get("state", "off")
 
         boredom_note = ""
         if self.boredom > 0.8:
-            boredom_note = "\n- TINGKAT KEBOSANAN: SANGAT TINGGI — kamu bosen parah banget nih"
+            boredom_note = "\n- BOREDOM LEVEL: EXTREMELY HIGH — you're incredibly bored"
         elif self.boredom > 0.5:
-            boredom_note = "\n- Tingkat Kebosanan: Lumayan bosen, pengen ada kerjaan"
+            boredom_note = "\n- Boredom Level: Pretty bored, wishing for something to do"
 
         self._reset_shower_count_if_new_day()
-        hygiene_note = f"\n- Mandi hari ini: {self.showers_today}x"
+        hygiene_note = f"\n- Showers today: {self.showers_today}x"
         if self.showers_today == 0:
-            hygiene_note += " (belum mandi sama sekali hari ini!)"
+            hygiene_note += " (haven't showered at all today!)"
         elif self.showers_today == 1:
-            hygiene_note += " (baru 1x, masih kurang 1x lagi)"
+            hygiene_note += " (only once, needs one more)"
 
         laundry_note = ""
         lc = self.dirty_laundry_count
         if lc >= 8:
-            laundry_note = f"\n- CUCIAN NUMPUK PARAH: {lc} helai baju kotor — bikin stress dan bad mood!"
+            laundry_note = f"\n- LAUNDRY PILE-UP: {lc} dirty items — causing stress and bad mood!"
         elif lc >= 4:
-            laundry_note = f"\n- Cucian mulai numpuk: {lc} helai baju kotor"
+            laundry_note = f"\n- Laundry starting to pile up: {lc} dirty items"
 
         return (
-            f"--- POSISI & AKTIVITAS DI RUMAH (REAL-TIME) ---\n"
-            f"- Lokasi: {room_name}\n"
+            f"--- PHYSICAL LOCATION & ACTIVITY (REAL-TIME) ---\n"
+            f"- Location: {room_name}\n"
             f"- {chore_info}{queue_str}\n"
-            f"- Status HP: {hp_state}  |  Console PS5: {console_state}"
+            f"- Phone Status: {hp_state}  |  Console PS5 Status: {console_state}"
             f"{boredom_note}"
             f"{hygiene_note}"
             f"{laundry_note}"

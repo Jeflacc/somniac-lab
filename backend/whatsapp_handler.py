@@ -112,13 +112,13 @@ class WhatsAppHandler:
             return
         sticker_path = os.path.join(STICKER_DIR, filename)
         if not os.path.exists(sticker_path):
-            print(f"[WhatsApp User {self.user_id}] Stiker tidak ditemukan: {sticker_path}")
+            print(f"[WhatsApp User {self.user_id}] Sticker not found: {sticker_path}")
             return
         try:
             self.client.send_sticker(self.master_jid, sticker_path)
-            print(f"[WhatsApp User {self.user_id}] Stiker terkirim: {filename}")
+            print(f"[WhatsApp User {self.user_id}] Sticker sent: {filename}")
         except Exception as e:
-            print(f"[WhatsApp User {self.user_id}] Gagal kirim stiker '{filename}': {e}")
+            print(f"[WhatsApp User {self.user_id}] Failed to send sticker '{filename}': {e}")
 
     def send_natural_burst(self, text: str):
         if not self.is_connected:

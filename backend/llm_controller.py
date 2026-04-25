@@ -115,7 +115,7 @@ class LLMController:
             if result == "RATE_LIMIT_DAILY":
                 rotated = self._mark_key_exhausted()
                 if not rotated:
-                    yield "*Sigh* ... (Semua API key Groq udah kena limit harian, coba lagi besok 😞)"
+                    yield "*Sigh* ... (All Groq API keys reached daily limit, try again tomorrow 😞)"
                     return
                 # Retry loop with new key
                 continue
@@ -125,7 +125,7 @@ class LLMController:
                     yield chunk
                 return
 
-        yield "*Sigh* ... (Semua API key Groq udah kena limit harian 😞)"
+        yield "*Sigh* ... (All Groq API keys reached daily limit 😞)"
 
     async def _try_request(self, payload: dict):
         """
@@ -146,14 +146,14 @@ class LLMController:
 
             if resp.status == 429:
                 err_text = await resp.text()
-                logging.warning(f"[LLM] 429 dari Groq key ...{self.api_key[-8:]}: {err_text[:120]}")
+                logging.warning(f"[LLM] 429 from Groq key ...{self.api_key[-8:]}: {err_text[:120]}")
                 # Check if it's daily exhaustion (not per-minute)
                 is_daily = "day" in err_text.lower() or "daily" in err_text.lower() or "rate_limit_exceeded" in err_text.lower()
                 if is_daily:
                     return "RATE_LIMIT_DAILY"
                 else:
                     # Per-minute limit — short wait then return error
-                    logging.warning("[LLM] Per-minute limit (10k TPM). Tunggu 15 detik.")
+                    logging.warning("[LLM] Per-minute limit (10k TPM). Waiting 15 seconds.")
                     import asyncio
                     await asyncio.sleep(15)
                     return "RATE_LIMIT_DAILY"  # Let caller retry with same or rotated key
@@ -167,7 +167,7 @@ class LLMController:
 
         except Exception as e:
             logging.error(f"Error LLM Controller: {e}")
-            return self._error_gen(f"Jaringan terputus atau server {self.provider.capitalize()} mati.")
+            return self._error_gen(f"Connection lost or {self.provider.capitalize()} server is down.")
 
     async def _stream_response(self, resp):
         """Parse streaming response dari Groq (OpenAI SSE) atau Ollama (JSON lines)."""

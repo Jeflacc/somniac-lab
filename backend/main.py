@@ -138,7 +138,7 @@ async def process_wa_queue():
                 house = HouseManager(user_id, db)
                 house.enqueue_wa(text, message)
                 logger.info(f"[WA QUEUE] User {user_id}: '{text[:50]}' → queued to check_wa chore")
-                await broadcast_to_user(user_id, {"type": "system", "text": f"[WhatsApp masuk]: {text[:80]}"})
+                await broadcast_to_user(user_id, {"type": "system", "text": f"[WhatsApp Incoming]: {text[:80]}"})
             except Exception as e:
                 logger.error(f"[WA QUEUE] Error: {e}")
             finally:
@@ -152,7 +152,7 @@ async def process_wa_queue():
 async def lifespan(app: FastAPI):
     global memory, llm, chat_lock
 
-    logger.info(f"🚀 Menginisialisasi Conscious AI Engine: {AI_NAME} (Multi-Tenant)")
+    logger.info(f"🚀 Initializing Conscious AI Engine: {AI_NAME} (Multi-Tenant)")
     memory  = MemoryManager()
     chat_lock = asyncio.Lock()
 
@@ -308,7 +308,7 @@ async def house_tick_loop():
                 if events.get("chore_completed") and events.get("chore_completed_def"):
                     chore_def = events["chore_completed_def"]
                     journal_text = chore_def.get("journal_text")
-                    journal_cat  = chore_def.get("journal_category", "kejadian")
+                    journal_cat  = chore_def.get("journal_category", "event")
                     if journal_text:
                         journal.add_entry(journal_text, journal_cat)
 
@@ -338,7 +338,7 @@ async def house_tick_loop():
                     if state.hunger >= 0.65 and house.needs_eat():
                         house.enqueue_chore("eat")
                     elif house.needs_shower():
-                        house.enqueue_chore("mandi")
+                        house.enqueue_chore("shower")
                     elif house.needs_laundry():
                         house.enqueue_chore("laundry")
                     elif house.boredom > 0.75:
@@ -377,25 +377,25 @@ async def autonomous_loop():
 
                 if state.is_sleeping and not was_sleeping:
                     trigger = True
-                    reason  = "Sudah masuk jadwal tidurmu. Pamit untuk tidur sekarang."
-                    journal.add_entry("Mulai waktu tidur. Pamit ke user.", "tidur")
+                    reason  = "It's your sleep schedule now. Say goodbye and go to sleep."
+                    journal.add_entry("Sleep time started. Saying goodbye to user.", "sleep")
                     house.enqueue_chore("sleep_routine", priority=True)
                 elif not state.is_sleeping and was_sleeping:
                     trigger = True
-                    reason  = "Kamu baru saja terbangun. Sapa user dengan hangat."
-                    journal.add_entry("Bangun tidur. Menyapa user.", "tidur")
+                    reason  = "You just woke up. Greet the user warmly."
+                    journal.add_entry("Woke up. Greeting user.", "sleep")
                     house.enqueue_chore("wake_routine", priority=True)
                 elif not state.is_sleeping:
                     if current["hunger"] > 0.8:
                         trigger = True
-                        reason  = "Lapar banget! Cerita ke user sambil minta makan/masak."
+                        reason  = "Starving! Tell the user and ask for food/start cooking."
                     elif current["sleepiness"] > 0.8:
                         trigger = True
-                        reason  = "Sangat ngantuk, hampir tidak bisa menahan kantuk."
+                        reason  = "Extremely sleepy, can barely stay awake."
 
                 if trigger and not chat_lock.locked():
                     async with chat_lock:
-                        await broadcast_to_user(user.id, {"type": "ai_thinking", "indicator": "Memikirkan sesuatu..."})
+                        await broadcast_to_user(user.id, {"type": "ai_thinking", "indicator": "Thinking of something..."})
                         mems, exs = await asyncio.gather(
                             asyncio.to_thread(memory.search_memory, user.id, AI_NAME, 1),
                             asyncio.to_thread(memory.search_examples, current["mood"])
@@ -405,8 +405,8 @@ async def autonomous_loop():
                         static_p, dynamic_p = build_system_prompt(
                             AI_NAME, current, mems, exs, jp, house.get_prompt_context()
                         )
-                        secret = f"[SISTEM]: Berinisiatiflah memulai obrolan karena {reason}"
-                        hidden = f"[SISTEM INTERNAL AI]:\n{dynamic_p}\n\n{secret}"
+                        secret = f"[SYSTEM]: Take the initiative to start a conversation because {reason}"
+                        hidden = f"[AI INTERNAL SYSTEM]:\n{dynamic_p}\n\n{secret}"
 
                         ai_response = ""
                         sf = StreamingTagFilter()
@@ -464,7 +464,7 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
     journal = JournalManager(current_user.id, db)
 
     if state.is_sleeping:
-        return {"response": f"*{AI_NAME} sedang tertidur... sshh*", "mood": state.mood}
+        return {"response": f"*{AI_NAME} is sleeping... sshh*", "mood": state.mood}
 
     async with chat_lock:
         state.increase_familiarity()
@@ -473,7 +473,7 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
 
         detected = extract_name_from_user_message(user_input)
         if detected and detected.lower() not in state.known_users:
-            state.remember_user(detected, "Terdeteksi otomatis")
+            state.remember_user(detected, "Auto-detected")
 
         current = state.get_state_summary()
 
@@ -492,13 +492,13 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
 
         word_count = len(user_input.split())
         if word_count <= 10:
-            length_hint = "[PETUNJUK SISTEM]: Balas singkat, 1-2 kalimat saja."
+            length_hint = "[SYSTEM HINT]: Reply briefly, 1-2 sentences only."
         elif word_count <= 25:
-            length_hint = "[PETUNJUK SISTEM]: Balas secukupnya."
+            length_hint = "[SYSTEM HINT]: Reply moderately."
         else:
-            length_hint = "[PETUNJUK SISTEM]: Balas ekspresif jika antusias."
+            length_hint = "[SYSTEM HINT]: Reply expressively if enthusiastic."
 
-        hidden = f"[SISTEM INTERNAL AI]:\n{dynamic_p}\n\n{length_hint}\n\n[PESAN USER BARU]:\n{user_input}"
+        hidden = f"[AI INTERNAL SYSTEM]:\n{dynamic_p}\n\n{length_hint}\n\n[NEW USER MESSAGE]:\n{user_input}"
 
         # Get chat history
         ai_inst = db.query(models.AIInstance).filter(models.AIInstance.owner_id == current_user.id).first()
@@ -579,18 +579,18 @@ async def run_command_endpoint(req: CommandRequest, current_user: models.User = 
     if cmd == "sleep":
         state.reset_state("sleep")
         house.enqueue_chore("sleep_routine", priority=True)
-        journal.add_entry("Disuruh tidur oleh user via web.", "tidur")
-        return {"ok": True, "msg": f"{AI_NAME} sekarang tidur 💤"}
+        journal.add_entry("Ordered to sleep by user via web.", "sleep")
+        return {"ok": True, "msg": f"{AI_NAME} is now sleeping 💤"}
     elif cmd == "wake":
         state.reset_state("wake")
         house.enqueue_chore("wake_routine", priority=True)
-        journal.add_entry("Dibangunkan oleh user via web.", "tidur")
-        return {"ok": True, "msg": f"{AI_NAME} sudah bangun 🥱"}
+        journal.add_entry("Woken up by user via web.", "sleep")
+        return {"ok": True, "msg": f"{AI_NAME} is awake 🥱"}
     elif cmd == "feed":
-        item = req.payload or "makanan misterius"
-        state.add_food(item.lower().replace(" ", "_"), item, 1, "buah", "🍱")
+        item = req.payload or "mysterious food"
+        state.add_food(item.lower().replace(" ", "_"), item, 1, "piece", "🍱")
         await broadcast_to_user(current_user.id, {"type": "inventory_state", **state.get_inventory_state()})
-        return {"ok": True, "msg": f"Memberi {item} ke {AI_NAME}"}
+        return {"ok": True, "msg": f"Gave {item} to {AI_NAME}"}
     elif cmd == "status":
         return {"ok": True, "state": state.get_state_summary()}
     else:

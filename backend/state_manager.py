@@ -40,7 +40,7 @@ class StateManager:
         self._breath_rate = 15  # breaths/min baseline
         
         # Base emotions
-        self.mood = "netral" # senang, sedih, marah, netral
+        self.mood = "neutral" # happy, sad, angry, neutral
         
         # Relationship & Emotions
         self.interaction_count = 0
@@ -200,7 +200,7 @@ class StateManager:
     # ─────────────── Food & Item Inventory ───────────────
 
     def add_food(self, item_id: str, name: str, qty: float, unit: str, emoji: str):
-        """Tambah bahan makanan ke inventori."""
+        """Add food material to inventory."""
         if item_id in self.food_inventory:
             self.food_inventory[item_id]["qty"] += qty
         else:
@@ -210,8 +210,8 @@ class StateManager:
 
     def consume_food(self, item_id: str = None, qty: float = 1) -> str:
         """
-        Consume food. If item_id=None, ambil bahan pertama yang ada.
-        Returns nama bahan yang dikonsumsi, atau '' kalau kosong.
+        Consume food. If item_id=None, take first available.
+        Returns name of consumed item, or '' if empty.
         """
         if item_id and item_id in self.food_inventory:
             item = self.food_inventory[item_id]
@@ -233,29 +233,29 @@ class StateManager:
         return ""
 
     def can_cook(self) -> bool:
-        """True jika ada minimal 1 bahan makanan di food_inventory."""
+        """True if there's at least 1 food material in food_inventory."""
         return bool(self.food_inventory)
 
     def get_food_summary(self) -> str:
-        """Return deskripsi singkat isi food_inventory."""
+        """Return brief description of food_inventory."""
         if not self.food_inventory:
-            return "Tidak ada bahan makanan"
+            return "No food materials"
         parts = []
         for data in self.food_inventory.values():
             parts.append(f"{data['emoji']} {data['name']} ({data['qty']} {data['unit']})")
         return ", ".join(parts)
 
     def add_item(self, item_id: str, name: str, qty: float, unit: str, emoji: str):
-        """Tambah barang (non-makanan) ke inventori."""
+        """Add item (non-food) to inventory."""
         if item_id in self.item_inventory:
             self.item_inventory[item_id]["qty"] += qty
         else:
             self.item_inventory[item_id] = {"name": name, "qty": qty, "unit": unit, "emoji": emoji}
-        logging.info(f"[INVENTORY] +{qty} {unit} {emoji} {name} (barang)")
+        logging.info(f"[INVENTORY] +{qty} {unit} {emoji} {name} (item)")
         self.save_state()
 
     def get_inventory_state(self) -> dict:
-        """Snapshot inventori untuk broadcast ke GUI."""
+        """Inventory snapshot for GUI broadcast."""
         return {
             "food_inventory": self.food_inventory,
             "item_inventory": self.item_inventory,
@@ -263,13 +263,13 @@ class StateManager:
         
     def get_relationship_status(self) -> str:
         if self.interaction_count < 5:
-            return "Orang Asing (Dingin, belum kenal)"
+            return "Stranger (Cold, don't know them yet)"
         elif self.interaction_count < 15:
-            return "Kenalan Baru (Mulai terbuka, tapi masih jaga jarak)"
+            return "New Acquaintance (Starting to open up, but still distant)"
         elif self.interaction_count < 30:
-            return "Teman (Lebih asik, nyambung diajak ngobrol)"
+            return "Friend (Fun to talk to, vibes are good)"
         else:
-            return "Teman Dekat / Sangat Akrab (Sangat hangat, manja atau blak-blakan)"
+            return "Close Friend / Intimate (Very warm, clingy, or blunt)"
     
     def process_interaction_emotion(self, user_text: str):
         """Simplistic emotion tracking to trigger core memory spikes"""
@@ -282,11 +282,11 @@ class StateManager:
         self.libido = max(0.0, min(1.0, libido_wave * 0.75 + self.libido_modifier * 0.25))
         
         # Stress triggers
-        if any(w in text for w in ["bodoh", "tolol", "bego", "jelek", "benci", "bacot", "anjir", "bangsat"]):
+        if any(w in text for w in ["stupid", "idiot", "dumb", "ugly", "hate", "stfu", "fuck", "bastard"]):
             self.stress += 0.4
         
         # Joy/Affection triggers
-        if any(w in text for w in ["sayang", "cantik", "ganteng", "pinter", "hebat", "makasih", "suka", "cinta"]):
+        if any(w in text for w in ["love", "pretty", "handsome", "smart", "great", "thanks", "like", "love you"]):
             self.joy += 0.4
             
         self.check_core_memory_creation(user_text)
@@ -295,7 +295,7 @@ class StateManager:
     def check_core_memory_creation(self, context_text: str):
         """If joy or stress spikes past 1.0, create a core memory and permanently alter multipliers."""
         if self.stress >= 1.0:
-            memory_text = f"Pengalaman Traumatik/Menyebalkan: Pernah dikasari/ditekan saat mendengar kalimat terkait '{context_text}'. Ingatan ini membuat karakter lebih cepat emosi."
+            memory_text = f"Traumatic/Annoying Experience: Was treated harshly/pressured when hearing phrases related to '{context_text}'. This memory makes the character get angry faster."
             self.core_memories.append(memory_text)
             self.irritability_mult += 0.2
             self.affection_mult = max(0.5, self.affection_mult - 0.1)
@@ -303,7 +303,7 @@ class StateManager:
             logging.info(f"CORE MEMORY FORMED: {memory_text}")
             
         if self.joy >= 1.0:
-            memory_text = f"Pengalaman Bahagia/Berkesan: Merasa sangat dihargai/disayang terkait pembicaraan '{context_text}'. Ingatan ini membuat karakter lebih hangat."
+            memory_text = f"Happy/Memorable Experience: Felt very appreciated/loved during conversation about '{context_text}'. This memory makes the character warmer."
             self.core_memories.append(memory_text)
             self.affection_mult += 0.2
             self.irritability_mult = max(0.5, self.irritability_mult - 0.1)
@@ -312,7 +312,7 @@ class StateManager:
 
     def increase_hunger_by_words(self, word_count: int):
         increment = (word_count / 100) * 0.05
-        # multiplier irritability mempercepat kelaparan bikin emosi
+        # irritability multiplier speeds up hunger
         self.hunger = min(self.max_val, self.hunger + (increment * self.irritability_mult))
         self._evaluate_mood()
         self.save_state()
@@ -393,13 +393,13 @@ class StateManager:
 
     def _evaluate_mood(self):
         if self.hunger > 0.8 or self.sleepiness > 0.8 or self.stress > 0.6:
-            self.mood = "marah" 
+            self.mood = "angry" 
         elif self.hunger > 0.5 or self.sleepiness > 0.5:
-            self.mood = "sedih" 
+            self.mood = "sad" 
         elif self.libido > 0.7 or self.joy > 0.6:
-            self.mood = "senang" 
+            self.mood = "happy" 
         else:
-            self.mood = "netral"
+            self.mood = "neutral"
             
     def remember_user(self, name: str, notes: str = ""):
         """Permanently store a user's name and optional notes so AI never forgets."""
@@ -417,7 +417,7 @@ class StateManager:
 
     def reset_state(self, action: str):
         if action == "eat" or action == "makan":
-            self.hunger = 0.0  # Makan kenyang = reset penuh ke 0
+            self.hunger = 0.0  # Full = reset to 0
         elif action == "sleep" or action == "tidur":
             self.sleepiness = 1.0
             self.is_sleeping = True 

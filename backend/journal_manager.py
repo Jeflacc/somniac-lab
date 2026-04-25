@@ -45,10 +45,10 @@ class JournalManager:
     # ─────────────────────────────────────────────
     # WRITE
     # ─────────────────────────────────────────────
-    def add_entry(self, text: str, category: str = "umum"):
+    def add_entry(self, text: str, category: str = "general"):
         """
-        Tambah satu entri ke buku harian.
-        category: "umum" | "percakapan" | "makan" | "tidur" | "perasaan" | "kejadian"
+        Add an entry to the journal.
+        category: "general" | "conversation" | "eat" | "sleep" | "feeling" | "event"
         """
         if not text.strip():
             return
@@ -81,7 +81,7 @@ class JournalManager:
 
     def get_recent_entries(self, days: int = 3) -> dict:
         """
-        Ambil entri dari N hari terakhir.
+        Get entries from last N days.
         Returns: {"2026-04-11": [...], "2026-04-10": [...]}
         """
         result = {}
@@ -97,9 +97,9 @@ class JournalManager:
     # ─────────────────────────────────────────────
     def build_journal_prompt(self, days: int = 2, max_entries_today: int = 10, max_entries_past: int = 5) -> str:
         """
-        Susun teks catatan harian untuk diinjeksikan ke system prompt AI.
-        Hari ini: max_entries_today entri terbaru.
-        Hari-hari sebelumnya: max_entries_past entri per hari (ringkasan).
+        Build journal text to be injected into system prompt.
+        Today: max_entries_today latest entries.
+        Past days: max_entries_past entries per day.
         """
         recent = self.get_recent_entries(days=days + 1)
         if not recent:
@@ -107,8 +107,8 @@ class JournalManager:
 
         today_str = datetime.now().strftime("%Y-%m-%d")
 
-        lines = ["--- BUKU CATATAN HARIANKU ---"]
-        lines.append("(Ini adalah catatan yang kamu tulis sendiri tentang apa yang terjadi. Gunakan sebagai referensi untuk mengingat kejadian nyata.)\n")
+        lines = ["--- MY DIARY ENTRIES ---"]
+        lines.append("(These are notes you wrote yourself about what happened. Use them as reference to remember real events.)\n")
 
         for date_str in sorted(recent.keys(), reverse=True):
             entries = recent[date_str]
@@ -117,10 +117,10 @@ class JournalManager:
                 today_dt = datetime.now().date()
                 delta = (today_dt - label_date.date()).days
                 if delta == 0:
-                    label = f"[Hari Ini — {label_date.strftime('%d %B %Y')}]"
+                    label = f"[Today — {label_date.strftime('%d %B %Y')}]"
                     max_e = max_entries_today
                 elif delta == 1:
-                    label = f"[Kemarin — {label_date.strftime('%d %B %Y')}]"
+                    label = f"[Yesterday — {label_date.strftime('%d %B %Y')}]"
                     max_e = max_entries_past
                 else:
                     label = f"[{label_date.strftime('%d %B %Y')}]"
@@ -130,11 +130,11 @@ class JournalManager:
                 max_e = max_entries_past
 
             lines.append(label)
-            # Ambil entri terbaru
+            # Latest entries
             shown = entries[-max_e:]
             for e in shown:
                 cat = e.get("category", "")
-                cat_tag = f"[{cat}] " if cat and cat != "umum" else ""
+                cat_tag = f"[{cat}] " if cat and cat != "general" else ""
                 lines.append(f"  • {e['time']} — {cat_tag}{e['entry']}")
             lines.append("")
 
