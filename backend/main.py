@@ -54,6 +54,7 @@ def auto_migrate():
     user_migrations = [
         ("email", "TEXT"),
         ("is_verified", "BOOLEAN DEFAULT 0"),
+        ("is_pro", "BOOLEAN DEFAULT 0"),
         ("otp", "TEXT DEFAULT NULL"),
         ("otp_expiry", "FLOAT DEFAULT NULL"),
     ]
