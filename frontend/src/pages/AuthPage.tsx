@@ -6,12 +6,14 @@ export function AuthPage() {
   const { login } = useAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [currentUsername, setCurrentUsername] = useState("");
 
   const handleAuth = async (username: string, password: string, isLogin: boolean, email?: string) => {
     setError("");
     setLoading(true);
 
     try {
+      setCurrentUsername(username);
       const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
       let body;
       let headers: HeadersInit = {};
@@ -41,6 +43,40 @@ export function AuthPage() {
       }
 
       const data = await res.json();
+      
+      // If the response contains a message but no token, it means OTP was sent
+      if (data.msg && !data.access_token) {
+        return true;
+      }
+
+      login(data.access_token);
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (otp: string) => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const res = await fetch(`${API_URL}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: currentUsername, otp }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Verification failed");
+      }
+
+      const data = await res.json();
       login(data.access_token);
       return true;
     } catch (err: any) {
@@ -61,6 +97,7 @@ export function AuthPage() {
       
       <SignInPage 
         onSubmit={handleAuth}
+        onVerify={handleVerify}
         isLoading={loading}
         onSuccess={() => {
           // Navigation is handled by the success screen transition in SignInPage

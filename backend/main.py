@@ -49,12 +49,19 @@ def auto_migrate():
                 
     # Migrate users
     existing_users = {row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()}
-    if "email" not in existing_users:
-        try:
-            cursor.execute("ALTER TABLE users ADD COLUMN email TEXT")
-            print("[MIGRATE] Added column users.email")
-        except Exception as e:
-            print(f"[MIGRATE] Skipped users.email: {e}")
+    user_migrations = [
+        ("email", "TEXT"),
+        ("is_verified", "BOOLEAN DEFAULT 0"),
+        ("otp", "TEXT DEFAULT NULL"),
+        ("otp_expiry", "FLOAT DEFAULT NULL"),
+    ]
+    for col_name, col_def in user_migrations:
+        if col_name not in existing_users:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
+                print(f"[MIGRATE] Added column users.{col_name}")
+            except Exception as e:
+                print(f"[MIGRATE] Skipped users.{col_name}: {e}")
             
     conn.commit()
     conn.close()

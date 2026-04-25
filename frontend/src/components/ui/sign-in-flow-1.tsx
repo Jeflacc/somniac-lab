@@ -31,6 +31,7 @@ interface SignInPageProps {
   onSuccess?: () => void;
   onBack?: () => void;
   onSubmit?: (username: string, password: string, isLogin: boolean, email?: string) => Promise<boolean>;
+  onVerify?: (code: string) => Promise<boolean>;
   isLoading?: boolean;
 }
       
@@ -437,7 +438,7 @@ function MiniNavbar() {
   );
 }
 
-export const SignInPage = ({ className, onSuccess, onBack, onSubmit, isLoading: externalLoading }: SignInPageProps) => {
+export const SignInPage = ({ className, onSuccess, onBack, onSubmit, onVerify, isLoading: externalLoading }: SignInPageProps) => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -504,6 +505,23 @@ export const SignInPage = ({ className, onSuccess, onBack, onSubmit, isLoading: 
             if (onSuccess) onSuccess();
           }, 2000);
         }
+      }
+    }
+  };
+
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const enteredCode = code.join("");
+    if (enteredCode.length === 6) {
+      if (onVerify) {
+        setInternalLoading(true);
+        const success = await onVerify(enteredCode);
+        setInternalLoading(false);
+        if (success) {
+          setStep("success");
+        }
+      } else {
+        setStep("success");
       }
     }
   };
@@ -663,76 +681,81 @@ export const SignInPage = ({ className, onSuccess, onBack, onSubmit, isLoading: 
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 100 }}
                   transition={{ duration: 0.4, ease: "easeOut" }}
-                  className="space-y-6 text-center"
                 >
-                  <div className="space-y-1">
-                    <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">Security Check</h1>
-                    <p className="text-[1.25rem] text-white/50 font-light">Verify your identity</p>
-                  </div>
-                  
-                  <div className="w-full">
-                    <div className="relative rounded-full py-4 px-5 border border-white/10 bg-white/5 backdrop-blur-md">
-                      <div className="flex items-center justify-center">
-                        {code.map((digit, i) => (
-                          <div key={i} className="flex items-center">
-                            <div className="relative">
-                              <input
-                                ref={(el) => {
-                                  codeInputRefs.current[i] = el;
-                                }}
-                                type="text"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                maxLength={1}
-                                value={digit}
-                                onChange={e => handleCodeChange(i, e.target.value)}
-                                onKeyDown={e => handleKeyDown(i, e)}
-                                className="w-8 text-center text-xl bg-transparent text-white border-none focus:outline-none focus:ring-0 appearance-none"
-                                style={{ caretColor: 'transparent' }}
-                              />
-                              {!digit && (
-                                <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none">
-                                  <span className="text-xl text-white/20">0</span>
-                                </div>
-                              )}
+                  <form onSubmit={handleCodeSubmit} className="space-y-6 text-center">
+                    <div className="space-y-1">
+                      <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">Security Check</h1>
+                      <p className="text-[1.25rem] text-white/50 font-light">Verify your identity</p>
+                    </div>
+                    
+                    <div className="w-full">
+                      <div className="relative rounded-full py-4 px-5 border border-white/10 bg-white/5 backdrop-blur-md">
+                        <div className="flex items-center justify-center">
+                          {code.map((digit, i) => (
+                            <div key={i} className="flex items-center">
+                              <div className="relative">
+                                <input
+                                  ref={(el) => {
+                                    codeInputRefs.current[i] = el;
+                                  }}
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  maxLength={1}
+                                  value={digit}
+                                  onChange={e => handleCodeChange(i, e.target.value)}
+                                  onKeyDown={e => handleKeyDown(i, e)}
+                                  className="w-8 text-center text-xl bg-transparent text-white border-none focus:outline-none focus:ring-0 appearance-none"
+                                  style={{ caretColor: 'transparent' }}
+                                />
+                                {!digit && (
+                                  <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none">
+                                    <span className="text-xl text-white/20">0</span>
+                                  </div>
+                                )}
+                              </div>
+                              {i < 5 && <span className="text-white/20 text-xl mx-1">|</span>}
                             </div>
-                            {i < 5 && <span className="text-white/20 text-xl mx-1">|</span>}
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div>
-                    <motion.p 
-                      className="text-white/50 hover:text-white/70 transition-colors cursor-pointer text-sm"
-                      whileHover={{ scale: 1.02 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      Resend code
-                    </motion.p>
-                  </div>
-                  
-                  <div className="flex w-full gap-3">
-                    <motion.button 
-                      onClick={handleBackClick}
-                      className="rounded-full bg-white/10 text-white border border-white/10 font-medium px-8 py-3 hover:bg-white/20 transition-colors w-[30%]"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      Back
-                    </motion.button>
-                    <motion.button 
-                      className={cn(`flex-1 rounded-full font-medium py-3 border transition-all duration-300`, 
-                        code.every(d => d !== "") 
-                        ? "bg-white text-black border-transparent hover:bg-white/90 cursor-pointer" 
-                        : "bg-white/5 text-white/20 border-white/5 cursor-not-allowed"
-                      )}
-                      disabled={!code.every(d => d !== "")}
-                    >
-                      Continue
-                    </motion.button>
-                  </div>
+                    
+                    <div>
+                      <motion.p 
+                        className="text-white/50 hover:text-white/70 transition-colors cursor-pointer text-sm"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        Resend code
+                      </motion.p>
+                    </div>
+                    
+                    <div className="flex w-full gap-3">
+                      <motion.button 
+                        type="button"
+                        onClick={handleBackClick}
+                        className="rounded-full bg-white/10 text-white border border-white/10 font-medium px-8 py-3 hover:bg-white/20 transition-colors w-[30%]"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Back
+                      </motion.button>
+                      <motion.button 
+                        type="submit"
+                        disabled={!code.every(d => d !== "") || internalLoading}
+                        className={cn(`flex-1 rounded-full font-medium py-3 border transition-all duration-300`, 
+                          code.every(d => d !== "") && !internalLoading
+                          ? "bg-white text-black border-transparent hover:bg-white/90 cursor-pointer" 
+                          : "bg-white/5 text-white/20 border-white/5 cursor-not-allowed"
+                        )}
+                      >
+                        {internalLoading ? (
+                          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto" />
+                        ) : "Continue"}
+                      </motion.button>
+                    </div>
+                  </form>
                 </motion.div>
               ) : (
                 <motion.div 

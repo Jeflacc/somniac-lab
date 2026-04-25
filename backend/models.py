@@ -8,6 +8,9 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    is_verified = Column(Boolean, default=False)
+    otp = Column(String, nullable=True)
+    otp_expiry = Column(Float, nullable=True)
     
     ai_instances = relationship("AIInstance", back_populates="owner")
     economy = relationship("Economy", back_populates="owner", uselist=False)
