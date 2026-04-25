@@ -142,8 +142,9 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
             # If exists but not verified, check if it's the SAME username
             if db_user.username != user.username:
                 raise HTTPException(status_code=400, detail="Email already taken by another pending account")
-            # Update password for retry
+            # Update password and email for retry
             db_user.hashed_password = get_password_hash(user.password)
+            db_user.email = user.email
     else:
         hashed_password = get_password_hash(user.password)
         db_user = models.User(username=user.username, email=user.email, hashed_password=hashed_password, is_verified=False)
@@ -155,12 +156,12 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     db_user.otp_expiry = time.time() + 600 # 10 mins
     db.commit()
 
-    # Send Email
-    success = await send_otp_email(user.email, otp)
+    # Send Email (use user.email from request to be sure, or db_user.email)
+    success = await send_otp_email(db_user.email, otp)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send verification email")
 
-    return {"msg": "Verification code sent to your email"}
+    return {"msg": f"Verification code sent to {db_user.email}"}
 
 @auth_router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -183,11 +184,14 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     db.commit()
 
     # Send Email
+    if not user.email:
+        raise HTTPException(status_code=400, detail="No email associated with this account. Please register again.")
+        
     success = await send_otp_email(user.email, otp)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send verification email")
 
-    return {"msg": "Verification code sent to your email", "require_otp": True}
+    return {"msg": f"Verification code sent to {user.email}", "require_otp": True}
 
 @auth_router.post("/verify-otp", response_model=Token)
 async def verify_otp(req: VerifyRequest, db: Session = Depends(get_db)):
