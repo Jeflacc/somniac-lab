@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
@@ -10,7 +10,7 @@ const PricingPage = () => {
   const [error, setError] = useState("");
 
   const paypalOptions = {
-    "client-id": "AVv8Lm-Z9AAkUc7Qj_chYZYbNgL9BMzz2Si5pfW4PkM8wszNc1eNJhYEhiboyjTyNm1sQORzcKX65knq",
+    clientId: "AVv8Lm-Z9AAkUc7Qj_chYZYbNgL9BMzz2Si5pfW4PkM8wszNc1eNJhYEhiboyjTyNm1sQORzcKX65knq",
     currency: "USD",
     intent: "capture",
   };
@@ -185,11 +185,13 @@ const PricingPage = () => {
                       <PayPalScriptProvider options={paypalOptions}>
                         <PayPalButtons 
                           style={{ layout: "vertical", shape: "pill", color: "white", label: "pay" }}
-                          createOrder={(data, actions) => {
+                          createOrder={(_data, actions) => {
                             return actions.order.create({
+                              intent: "CAPTURE",
                               purchase_units: [
                                 {
                                   amount: {
+                                    currency_code: "USD",
                                     value: "19.00",
                                   },
                                   description: "Somniac Pro Subscription (Monthly)"
@@ -199,7 +201,7 @@ const PricingPage = () => {
                           }}
                           onApprove={(data, actions) => {
                             if (actions.order) {
-                              return actions.order.capture().then((details) => {
+                              return actions.order.capture().then((_details) => {
                                 handleCapture(data.orderID);
                               });
                             }
