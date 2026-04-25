@@ -32,18 +32,30 @@ def auto_migrate():
     import sqlite3
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    existing = {row[1] for row in cursor.execute("PRAGMA table_info(ai_instances)").fetchall()}
-    migrations = [
+    
+    # Migrate ai_instances
+    existing_ai = {row[1] for row in cursor.execute("PRAGMA table_info(ai_instances)").fetchall()}
+    migrations_ai = [
         ("whatsapp_number", "TEXT DEFAULT NULL"),
         ("whatsapp_connected", "BOOLEAN DEFAULT 0"),
     ]
-    for col_name, col_def in migrations:
-        if col_name not in existing:
+    for col_name, col_def in migrations_ai:
+        if col_name not in existing_ai:
             try:
                 cursor.execute(f"ALTER TABLE ai_instances ADD COLUMN {col_name} {col_def}")
                 print(f"[MIGRATE] Added column ai_instances.{col_name}")
             except Exception as e:
                 print(f"[MIGRATE] Skipped ai_instances.{col_name}: {e}")
+                
+    # Migrate users
+    existing_users = {row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()}
+    if "email" not in existing_users:
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN email TEXT")
+            print("[MIGRATE] Added column users.email")
+        except Exception as e:
+            print(f"[MIGRATE] Skipped users.email: {e}")
+            
     conn.commit()
     conn.close()
 
