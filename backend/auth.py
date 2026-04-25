@@ -58,6 +58,7 @@ auth_router = APIRouter()
 
 class UserCreate(BaseModel):
     username: str
+    email: str
     password: str
 
 class Token(BaseModel):
@@ -66,12 +67,17 @@ class Token(BaseModel):
 
 @auth_router.post("/register", response_model=Token)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
+    db_user = db.query(models.User).filter(
+        (models.User.username == user.username) | (models.User.email == user.email)
+    ).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        if db_user.username == user.username:
+            raise HTTPException(status_code=400, detail="Username already registered")
+        else:
+            raise HTTPException(status_code=400, detail="Email already registered")
     
     hashed_password = get_password_hash(user.password)
-    db_user = models.User(username=user.username, hashed_password=hashed_password)
+    db_user = models.User(username=user.username, email=user.email, hashed_password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
