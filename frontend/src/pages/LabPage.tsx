@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { useAuth } from '../contexts/AuthContext'
 import { useAIConnection, type Message, type AIState } from '../hooks/useAIConnection'
@@ -284,8 +284,9 @@ function barColor(v: number): string {
 
 /* ── Main Lab Page ───────────────────────────────────────────────────────── */
 export default function LabPage() {
+  const { agentId } = useParams()
   const { logout } = useAuth()
-  const { connected, aiState, houseState, economy, messages, isThinking, streamBuffer, qrString, sendMessage, sendCommand, generateQr } = useAIConnection()
+  const { connected, aiState, houseState, economy, messages, isThinking, streamBuffer, qrString, sendMessage, sendCommand, generateQr } = useAIConnection(agentId)
   const [input, setInput] = useState('')
   const [currentTab, setCurrentTab] = useState<'chat' | 'settings'>('chat')
   const [masterPhone, setMasterPhone] = useState('')

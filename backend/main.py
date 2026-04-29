@@ -35,8 +35,8 @@ def auto_migrate():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Migrate ai_instances
-    existing_ai = {row[1] for row in cursor.execute("PRAGMA table_info(ai_instances)").fetchall()}
+    # Migrate ai_agents
+    existing_ai = {row[1] for row in cursor.execute("PRAGMA table_info(ai_agents)").fetchall()}
     migrations_ai = [
         ("whatsapp_number", "TEXT DEFAULT NULL"),
         ("whatsapp_connected", "BOOLEAN DEFAULT 0"),
@@ -44,10 +44,10 @@ def auto_migrate():
     for col_name, col_def in migrations_ai:
         if col_name not in existing_ai:
             try:
-                cursor.execute(f"ALTER TABLE ai_instances ADD COLUMN {col_name} {col_def}")
-                print(f"[MIGRATE] Added column ai_instances.{col_name}")
+                cursor.execute(f"ALTER TABLE ai_agents ADD COLUMN {col_name} {col_def}")
+                print(f"[MIGRATE] Added column ai_agents.{col_name}")
             except Exception as e:
-                print(f"[MIGRATE] Skipped ai_instances.{col_name}: {e}")
+                print(f"[MIGRATE] Skipped ai_agents.{col_name}: {e}")
                 
     # Migrate users
     existing_users = {row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()}
@@ -116,7 +116,7 @@ from whatsapp_handler import WhatsAppHandler
 memory: Optional[MemoryManager] = None
 llm: Optional[LLMController]    = None
 chat_lock: Optional[asyncio.Lock] = None
-active_ws: dict[int, set[WebSocket]] = {} # user_id -> websockets
+active_ws: dict[int, set[WebSocket]] = {} # agent_id -> websockets
 
 # WhatsApp Globals
 active_wa_handlers: dict[int, WhatsAppHandler] = {}
@@ -129,16 +129,16 @@ async def process_wa_queue():
     """
     while True:
         try:
-            user_id, text, message = await wa_in_queue.get()
+            agent_id, text, message = await wa_in_queue.get()
             if not text.strip():
                 wa_in_queue.task_done()
                 continue
             db = SessionLocal()
             try:
-                house = HouseManager(user_id, db)
+                house = HouseManager(agent_id, db)
                 house.enqueue_wa(text, message)
-                logger.info(f"[WA QUEUE] User {user_id}: '{text[:50]}' → queued to check_wa chore")
-                await broadcast_to_user(user_id, {"type": "system", "text": f"[WhatsApp Incoming]: {text[:80]}"})
+                logger.info(f"[WA QUEUE] Agent {agent_id}: '{text[:50]}' → queued to check_wa chore")
+                await broadcast_to_user(agent_id, {"type": "system", "text": f"[WhatsApp Incoming]: {text[:80]}"})
             except Exception as e:
                 logger.error(f"[WA QUEUE] Error: {e}")
             finally:
@@ -199,21 +199,50 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(payments_router, prefix="/api/payments", tags=["Payments"])
 
+
+class CreateAgentRequest(BaseModel):
+    name: str
+    base_persona: str = "Helpful and friendly AI assistant."
+
+@app.post("/api/agents")
+async def create_agent(req: CreateAgentRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    new_agent = models.AIAgent(owner_id=current_user.id, name=req.name, base_persona=req.base_persona)
+    db.add(new_agent)
+    db.commit()
+    db.refresh(new_agent)
+    
+    # Initialize economies and states
+    econ = models.Economy(agent_id=new_agent.id)
+    house = models.HouseState(agent_id=new_agent.id)
+    journal = models.JournalEntry(agent_id=new_agent.id, date_str=time.strftime("%Y-%m-%d"))
+    db.add(econ)
+    db.add(house)
+    db.add(journal)
+    db.commit()
+    
+    return {"id": new_agent.id, "name": new_agent.name, "persona": new_agent.base_persona}
+
+@app.get("/api/agents")
+async def list_agents(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agents = db.query(models.AIAgent).filter(models.AIAgent.owner_id == current_user.id).all()
+    return [{"id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood} for a in agents]
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "ai_name": AI_NAME}
 
 
-async def broadcast_to_user(user_id: int, msg: dict):
-    if user_id not in active_ws:
+async def broadcast_to_user(agent_id: int, msg: dict):
+    if agent_id not in active_ws:
         return
     dead = set()
-    for ws in list(active_ws[user_id]):
+    for ws in list(active_ws[agent_id]):
         try:
             await ws.send_json(msg)
         except Exception:
             dead.add(ws)
-    active_ws[user_id].difference_update(dead)
+    active_ws[agent_id].difference_update(dead)
 
 
 async def state_broadcast_loop():
@@ -221,11 +250,11 @@ async def state_broadcast_loop():
         await asyncio.sleep(1)
         db = SessionLocal()
         try:
-            users = db.query(models.User).all()
-            for user in users:
-                if user.id in active_ws and active_ws[user.id]:
-                    state = StateManager(user.id, db)
-                    await broadcast_to_user(user.id, {"type": "state", "state": state.get_state_summary()})
+            agents = db.query(models.AIAgent).all()
+            for agent in agents:
+                if agent.id in active_ws and active_ws[user.id]:
+                    state = StateManager(agent.id, db)
+                    await broadcast_to_user(agent.id, {"type": "state", "state": state.get_state_summary()})
         except Exception as e:
             logger.error(f"State broadcast error: {e}")
         finally:
@@ -238,21 +267,21 @@ async def house_tick_loop():
         await asyncio.sleep(10)
         db = SessionLocal()
         try:
-            users = db.query(models.User).all()
-            for user in users:
-                house = HouseManager(user.id, db)
-                state = StateManager(user.id, db)
-                journal = JournalManager(user.id, db)
+            agents = db.query(models.AIAgent).all()
+            for agent in agents:
+                house = HouseManager(agent.id, db)
+                state = StateManager(agent.id, db)
+                journal = JournalManager(agent.id, db)
                 
                 events = house.tick()
-                if user.id in active_ws and active_ws[user.id]:
-                    await broadcast_to_user(user.id, {"type": "house_state", **house.get_house_state()})
+                if agent.id in active_ws and active_ws[user.id]:
+                    await broadcast_to_user(agent.id, {"type": "house_state", **house.get_house_state()})
 
                 # ── Mark read: AI opened WA → send read receipt ──
                 if events.get("mark_read_wa_message"):
-                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                    if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:
                         try:
-                            active_wa_handlers[user.id].mark_read(events["mark_read_wa_message"])
+                            active_wa_handlers[agent.id].mark_read(events["mark_read_wa_message"])
                             logger.info(f"[HOUSE] User {user.id}: mark_read sent")
                         except Exception as _e:
                             logger.warning(f"[HOUSE] mark_read failed: {_e}")
@@ -262,10 +291,10 @@ async def house_tick_loop():
                 was_holding = _last_holding_phone.get(user.id, False)
                 if holding_now != was_holding:
                     _last_holding_phone[user.id] = holding_now
-                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                    if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:
                         try:
                             import threading
-                            handler = active_wa_handlers[user.id]
+                            handler = active_wa_handlers[agent.id]
                             threading.Thread(target=handler.set_presence, args=(holding_now,), daemon=True).start()
                         except Exception as _pe:
                             logger.warning(f"[HOUSE] set_presence failed: {_pe}")
@@ -276,13 +305,13 @@ async def house_tick_loop():
                     user_input = wa_data["user_input"]
                     
                     # Set typing indicator on WhatsApp
-                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
+                    if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:
                         try:
-                            active_wa_handlers[user.id].set_typing(True)
+                            active_wa_handlers[agent.id].set_typing(True)
                         except Exception:
                             pass
                     
-                    async def async_wa_chat(u, text, uid):
+                    async def async_wa_chat(u, text, agent_id):
                         db_sess = SessionLocal()
                         try:
                             req = ChatRequest(message=text)
@@ -294,7 +323,7 @@ async def house_tick_loop():
                             # Notify house manager that reply was sent to unblock check_wa step
                             db_house = SessionLocal()
                             try:
-                                h = HouseManager(uid, db_house)
+                                h = HouseManager(agent_id, db_house)
                                 h.notify_wa_reply_sent()
                                 h.save_state()
                             except Exception:
@@ -322,8 +351,8 @@ async def house_tick_loop():
 
                 # ── Boredom WA notif (e.g. "lagi main PS5 nih") ──
                 if events.get("wa_notif_text"):
-                    if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
-                        active_wa_handlers[user.id].send_natural_burst(events["wa_notif_text"])
+                    if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:
+                        active_wa_handlers[agent.id].send_natural_burst(events["wa_notif_text"])
                         logger.info(f"[HOUSE] Boredom WA notif sent: {events['wa_notif_text']}")
 
                 # ── Laundry mood penalty ──
@@ -362,11 +391,11 @@ async def autonomous_loop():
 
         db = SessionLocal()
         try:
-            users = db.query(models.User).all()
-            for user in users:
-                state = StateManager(user.id, db)
-                journal = JournalManager(user.id, db)
-                house = HouseManager(user.id, db)
+            agents = db.query(models.AIAgent).all()
+            for agent in agents:
+                state = StateManager(agent.id, db)
+                journal = JournalManager(agent.id, db)
+                house = HouseManager(agent.id, db)
 
                 was_sleeping = state.is_sleeping
                 state.update_state_over_time()
@@ -395,7 +424,7 @@ async def autonomous_loop():
 
                 if trigger and not chat_lock.locked():
                     async with chat_lock:
-                        await broadcast_to_user(user.id, {"type": "ai_thinking", "indicator": "Thinking of something..."})
+                        await broadcast_to_user(agent.id, {"type": "ai_thinking", "indicator": "Thinking of something..."})
                         mems, exs = await asyncio.gather(
                             asyncio.to_thread(memory.search_memory, user.id, AI_NAME, 1),
                             asyncio.to_thread(memory.search_examples, current["mood"])
@@ -414,21 +443,21 @@ async def autonomous_loop():
                             safe = sf.feed(chunk)
                             ai_response += chunk
                             if safe:
-                                await broadcast_to_user(user.id, {"type": "ai_chunk", "chunk": safe})
+                                await broadcast_to_user(agent.id, {"type": "ai_chunk", "chunk": safe})
 
                         leftover = sf.flush()
                         if leftover:
-                            await broadcast_to_user(user.id, {"type": "ai_chunk", "chunk": leftover})
+                            await broadcast_to_user(agent.id, {"type": "ai_chunk", "chunk": leftover})
 
                         ai_response = strip_all_system_tags(ai_response)
                         ai_response = re.sub(
                             rf"^(?:AI|{re.escape(AI_NAME)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
                         ).strip()
-                        await broadcast_to_user(user.id, {"type": "ai_end", "response": ai_response, "source": "autonomous"})
-                        if user.id in active_wa_handlers and active_wa_handlers[user.id].is_connected:
-                            active_wa_handlers[user.id].send_natural_burst(ai_response)
+                        await broadcast_to_user(agent.id, {"type": "ai_end", "response": ai_response, "source": "autonomous"})
+                        if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:
+                            active_wa_handlers[agent.id].send_natural_burst(ai_response)
                             
-                        await asyncio.to_thread(memory.add_memory, user.id, "ai", ai_response)
+                        await asyncio.to_thread(memory.add_memory, agent.id, "ai", ai_response)
         except Exception as e:
             logger.error(f"[AUTO LOOP] Error: {e}")
         finally:
@@ -439,10 +468,13 @@ class ChatRequest(BaseModel):
     message: str
 
 @app.get("/api/state")
-async def get_state(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    state = StateManager(current_user.id, db)
-    house = HouseManager(current_user.id, db)
-    economy = EconomyManager(current_user.id, db)
+async def get_state(agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Verify ownership
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent: raise HTTPException(404, "Agent not found")
+    state = StateManager(agent_id, db)
+    house = HouseManager(agent_id, db)
+    economy = EconomyManager(agent_id, db)
     return {
         "state": state.get_state_summary(),
         "house": house.get_house_state(),
@@ -450,7 +482,9 @@ async def get_state(current_user: models.User = Depends(get_current_user), db: S
     }
 
 @app.post("/api/chat")
-async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db), source: str = "web"):
+async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db), source: str = "web"):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent: raise HTTPException(404, "Agent not found")
     if not llm:
         raise HTTPException(503, "Engine not ready")
 
@@ -458,10 +492,10 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
     if not user_input:
         raise HTTPException(400, "Empty message")
 
-    state = StateManager(current_user.id, db)
-    house = HouseManager(current_user.id, db)
-    economy = EconomyManager(current_user.id, db)
-    journal = JournalManager(current_user.id, db)
+    state = StateManager(agent_id, db)
+    house = HouseManager(agent_id, db)
+    economy = EconomyManager(agent_id, db)
+    journal = JournalManager(agent_id, db)
 
     if state.is_sleeping:
         return {"response": f"*{AI_NAME} is sleeping... sshh*", "mood": state.mood}
@@ -478,7 +512,7 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
         current = state.get_state_summary()
 
         mems, exs, jp = await asyncio.gather(
-            asyncio.to_thread(memory.search_memory, current_user.id, user_input, 3),
+            asyncio.to_thread(memory.search_memory, agent_id, user_input, 3),
             asyncio.to_thread(memory.search_examples, user_input + " " + current.get("mood", "")),
             asyncio.to_thread(journal.build_journal_prompt),
         )
@@ -501,7 +535,7 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
         hidden = f"[AI INTERNAL SYSTEM]:\n{dynamic_p}\n\n{length_hint}\n\n[NEW USER MESSAGE]:\n{user_input}"
 
         # Get chat history
-        ai_inst = db.query(models.AIInstance).filter(models.AIInstance.owner_id == current_user.id).first()
+        ai_inst = agent
         chat_history = ai_inst.state_data.get("chat_history", []) if ai_inst and ai_inst.state_data else []
 
         ai_response = ""
@@ -510,11 +544,11 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
             safe = sf.feed(chunk)
             ai_response += chunk
             if safe:
-                await broadcast_to_user(current_user.id, {"type": "ai_chunk", "chunk": safe})
+                await broadcast_to_user(agent_id, {"type": "ai_chunk", "chunk": safe})
 
         leftover = sf.flush()
         if leftover:
-            await broadcast_to_user(current_user.id, {"type": "ai_chunk", "chunk": leftover})
+            await broadcast_to_user(agent_id, {"type": "ai_chunk", "chunk": leftover})
 
         for entry in parse_ingat_tags(ai_response):
             name = entry.get("name", "").strip()
@@ -530,9 +564,9 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
             rf"^(?:AI|{re.escape(AI_NAME)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
         ).strip()
 
-        await broadcast_to_user(current_user.id, {"type": "ai_end", "response": ai_response, "source": source})
-        if source == "whatsapp" and current_user.id in active_wa_handlers and active_wa_handlers[current_user.id].is_connected:
-            active_wa_handlers[current_user.id].send_natural_burst(ai_response)
+        await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})
+        if source == "whatsapp" and current_agent.id in active_wa_handlers and active_wa_handlers[agent_id].is_connected:
+            active_wa_handlers[agent_id].send_natural_burst(ai_response)
 
         chat_history.append({"role": "user", "content": user_input})
         chat_history.append({"role": "assistant", "content": ai_response})
@@ -546,8 +580,8 @@ async def chat_endpoint(req: ChatRequest, current_user: models.User = Depends(ge
             ai_inst.state_data = sd
             db.commit()
 
-        await asyncio.to_thread(memory.add_memory, current_user.id, "user", user_input)
-        await asyncio.to_thread(memory.add_memory, current_user.id, "ai", ai_response)
+        await asyncio.to_thread(memory.add_memory, agent_id, "user", user_input)
+        await asyncio.to_thread(memory.add_memory, agent_id, "ai", ai_response)
         state.increase_hunger_by_words(len(ai_response.split()))
 
     return {"response": ai_response, "mood": state.mood, "state": state.get_state_summary()}
@@ -558,10 +592,12 @@ class TopupRequest(BaseModel):
     reason: str = "Top-up via Web"
 
 @app.post("/api/economy/topup")
-async def topup(req: TopupRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    economy = EconomyManager(current_user.id, db)
+async def topup(req: TopupRequest, agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent: raise HTTPException(404, "Agent not found")
+    economy = EconomyManager(agent_id, db)
     new_bal = economy.add_balance(req.amount, req.reason)
-    await broadcast_to_user(current_user.id, {"type": "economy_state", **economy.get_summary()})
+    await broadcast_to_user(agent_id, {"type": "economy_state", **economy.get_summary()})
     return {"balance": new_bal, "formatted": economy.get_balance_formatted()}
 
 
@@ -570,10 +606,12 @@ class CommandRequest(BaseModel):
     payload: Optional[str] = None
 
 @app.post("/api/command")
-async def run_command_endpoint(req: CommandRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    state = StateManager(current_user.id, db)
-    house = HouseManager(current_user.id, db)
-    journal = JournalManager(current_user.id, db)
+async def run_command_endpoint(req: CommandRequest, agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent: raise HTTPException(404, "Agent not found")
+    state = StateManager(agent_id, db)
+    house = HouseManager(agent_id, db)
+    journal = JournalManager(agent_id, db)
     
     cmd = req.command.lower()
     if cmd == "sleep":
@@ -589,7 +627,7 @@ async def run_command_endpoint(req: CommandRequest, current_user: models.User = 
     elif cmd == "feed":
         item = req.payload or "mysterious food"
         state.add_food(item.lower().replace(" ", "_"), item, 1, "piece", "🍱")
-        await broadcast_to_user(current_user.id, {"type": "inventory_state", **state.get_inventory_state()})
+        await broadcast_to_user(agent_id, {"type": "inventory_state", **state.get_inventory_state()})
         return {"ok": True, "msg": f"Gave {item} to {AI_NAME}"}
     elif cmd == "status":
         return {"ok": True, "state": state.get_state_summary()}
@@ -600,7 +638,12 @@ import jwt
 from auth import SECRET_KEY, ALGORITHM
 
 @app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket, token: str = None):
+async def websocket_endpoint(ws: WebSocket, token: str = None, agent_id: int = None):
+    if not agent_id:
+        await ws.accept()
+        await ws.send_json({"type": "error", "msg": "agent_id is required."})
+        await ws.close(code=1008)
+        return
     await ws.accept()
 
     # --- Validate token FIRST before doing anything ---
@@ -631,13 +674,13 @@ async def websocket_endpoint(ws: WebSocket, token: str = None):
         return
 
     user_id = user.id
-    if user_id not in active_ws:
-        active_ws[user_id] = set()
-    active_ws[user_id].add(ws)
-    logger.info(f"[WS] ✅ New connection for user '{username}' (id={user_id}). Total sockets: {len(active_ws[user_id])}")
+    if agent_id not in active_ws:
+        active_ws[agent_id] = set()
+    active_ws[agent_id].add(ws)
+    logger.info(f"[WS] ✅ New connection for user '{username}' (id={user_id}). Total sockets: {len(active_ws[agent_id])}")
 
     state = StateManager(user_id, db)
-    house = HouseManager(user_id, db)
+    house = HouseManager(agent_id, db)
     economy = EconomyManager(user_id, db)
 
     await ws.send_json({"type": "state", "state": state.get_state_summary()})
@@ -654,12 +697,12 @@ async def websocket_endpoint(ws: WebSocket, token: str = None):
                 user_text = data.get("text", "").strip()
                 if not user_text:
                     continue
-                await broadcast_to_user(user_id, {"type": "user_message", "text": user_text})
+                await broadcast_to_user(agent_id, {"type": "user_message", "text": user_text})
                 
                 db = SessionLocal()
                 req = ChatRequest(message=user_text)
                 try:
-                    result = await chat_endpoint(req, user, db)
+                    result = await chat_endpoint(req, agent_id, user, db)
                 except Exception as e:
                     await ws.send_json({"type": "error", "msg": str(e)})
                 finally:
@@ -671,7 +714,7 @@ async def websocket_endpoint(ws: WebSocket, token: str = None):
                 req = CommandRequest(command=cmd, payload=payload_data)
                 db = SessionLocal()
                 try:
-                    result = await run_command_endpoint(req, user, db)
+                    result = await run_command_endpoint(req, agent_id, user, db)
                     await ws.send_json({"type": "command_result", **result})
                 except Exception as e:
                     await ws.send_json({"type": "error", "msg": str(e)})
@@ -681,7 +724,7 @@ async def websocket_endpoint(ws: WebSocket, token: str = None):
             elif msg_type == "request_qr":
                 master_phone = data.get("master_phone")
                 db = SessionLocal()
-                ai_inst = db.query(models.AIInstance).filter(models.AIInstance.owner_id == user_id).first()
+                ai_inst = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id).first()
                 if master_phone and ai_inst:
                     ai_inst.whatsapp_number = master_phone
                     db.commit()
@@ -694,7 +737,7 @@ async def websocket_endpoint(ws: WebSocket, token: str = None):
                     continue
                     
                 async def send_qr_to_ws(qr_str):
-                    await broadcast_to_user(user_id, {"type": "wa_qr", "qr_string": qr_str})
+                    await broadcast_to_user(agent_id, {"type": "wa_qr", "qr_string": qr_str})
                     
                 if user_id not in active_wa_handlers:
                     try:
@@ -729,5 +772,5 @@ async def websocket_endpoint(ws: WebSocket, token: str = None):
     except Exception as e:
         logger.error(f"[WS] Unexpected error for user '{username}': {e}")
     finally:
-        active_ws[user_id].discard(ws)
+        active_ws[agent_id].discard(ws)
 

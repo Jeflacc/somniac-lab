@@ -79,7 +79,7 @@ class MemoryManager:
             return ", ".join(results["documents"][0])
         return ""
         
-    def add_memory(self, user_id: int, role: str, text: str):
+    def add_memory(self, agent_id: int, role: str, text: str):
         """
         Menyimpan interaksi (text) ke dalam memori.
         role bisa "user" atau "ai".
@@ -87,8 +87,8 @@ class MemoryManager:
         if not text.strip():
             return
             
-        doc_id = f"mem_{user_id}_{int(time.time() * 1000)}"
-        metadata = {"role": role, "timestamp": time.time(), "user_id": user_id}
+        doc_id = f"mem_{agent_id}_{int(time.time() * 1000)}"
+        metadata = {"role": role, "timestamp": time.time(), "agent_id": agent_id}
         
         self.collection.add(
             documents=[text],
@@ -96,7 +96,7 @@ class MemoryManager:
             ids=[doc_id]
         )
         
-    def search_memory(self, user_id: int, query: str, n_results: int = 1) -> list:
+    def search_memory(self, agent_id: int, query: str, n_results: int = 1) -> list:
         """
         Melakukan pencarian semantik terhadap memori terdahulu yang mirip dengan query.
         """
@@ -110,7 +110,7 @@ class MemoryManager:
             return []
             
         # Menghitung jumlah dokumen milik user ini
-        user_docs = self.collection.get(where={"user_id": user_id})
+        user_docs = self.collection.get(where={"agent_id": agent_id})
         count = len(user_docs["ids"]) if user_docs and "ids" in user_docs else 0
         if count == 0:
             return []
@@ -120,7 +120,7 @@ class MemoryManager:
         results = self.collection.query(
             query_texts=[query],
             n_results=safe_n_results,
-            where={"user_id": user_id}
+            where={"agent_id": agent_id}
         )
         
         memories = []

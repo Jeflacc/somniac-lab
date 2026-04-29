@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LabPage from './pages/LabPage'
+import DashboardPage from './pages/DashboardPage'
 import { AuthPage } from './pages/AuthPage'
 import PricingPage from './pages/PricingPage'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -20,7 +21,12 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/auth" element={isAuthenticated ? <Navigate to="/lab" replace /> : <AuthPage />} />
-      <Route path="/lab/*" element={
+      <Route path="/lab" element={
+        <ProtectedRoute>
+          <DashboardPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/lab/:agentId" element={
         <ProtectedRoute>
           <LabPage />
         </ProtectedRoute>

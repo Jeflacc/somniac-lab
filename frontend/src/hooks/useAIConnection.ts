@@ -36,7 +36,7 @@ export type EconomyState = {
   formatted_balance: string
 }
 
-export function useAIConnection() {
+export function useAIConnection(agentId: string | undefined) {
   const wsRef        = useRef<WebSocket | null>(null)
   const reconnectRef = useRef<ReturnType<typeof setTimeout>>()
   const { token }    = useAuth()
@@ -56,10 +56,10 @@ export function useAIConnection() {
   }, [])
 
   const connect = useCallback(() => {
-    if (!token) return;
+    if (!token || !agentId) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-    const ws = new WebSocket(`${WS_URL}?token=${token}`)
+    const ws = new WebSocket(`${WS_URL}?token=${token}&agent_id=${agentId}`)
     wsRef.current = ws
 
     ws.onopen = () => {
@@ -128,8 +128,9 @@ export function useAIConnection() {
     return () => {
       clearTimeout(reconnectRef.current)
       wsRef.current?.close()
+      wsRef.current = null
     }
-  }, [connect, token])
+  }, [connect, token, agentId])
 
   const sendMessage = useCallback((text: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

@@ -11,7 +11,7 @@ class JournalManager:
     """
 
     def __init__(self, user_id: int, db: Session):
-        self.user_id = user_id
+        self.agent_id = agent_id
         self.db = db
         self._data: dict = {}  # {"2026-04-11": [{"time": "19:30", "entry": "..."}]}
         self._load()
@@ -21,7 +21,7 @@ class JournalManager:
     # ─────────────────────────────────────────────
     def _load(self):
         try:
-            records = self.db.query(models.JournalEntry).filter(models.JournalEntry.owner_id == self.user_id).all()
+            records = self.db.query(models.JournalEntry).filter(models.JournalEntry.agent_id == self.agent_id).all()
             self._data = {r.date_str: r.entries for r in records}
         except Exception as e:
             logging.error(f"[Journal] Gagal load: {e}")
@@ -31,11 +31,11 @@ class JournalManager:
         try:
             for date_str, entries in self._data.items():
                 record = self.db.query(models.JournalEntry).filter(
-                    models.JournalEntry.owner_id == self.user_id,
+                    models.JournalEntry.agent_id == self.agent_id,
                     models.JournalEntry.date_str == date_str
                 ).first()
                 if not record:
-                    record = models.JournalEntry(owner_id=self.user_id, date_str=date_str)
+                    record = models.JournalEntry(agent_id=self.agent_id, date_str=date_str)
                     self.db.add(record)
                 record.entries = entries
             self.db.commit()

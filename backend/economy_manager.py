@@ -11,7 +11,7 @@ class EconomyManager:
     """
 
     def __init__(self, user_id: int, db: Session, starting_balance: float = 50_000.0):
-        self.user_id = user_id
+        self.agent_id = agent_id
         self.db = db
         self.balance = starting_balance
         self.transaction_history: list[dict] = []
@@ -68,9 +68,9 @@ class EconomyManager:
 
     def save_state(self):
         try:
-            eco = self.db.query(models.Economy).filter(models.Economy.owner_id == self.user_id).first()
+            eco = self.db.query(models.Economy).filter(models.Economy.agent_id == self.agent_id).first()
             if not eco:
-                eco = models.Economy(owner_id=self.user_id)
+                eco = models.Economy(agent_id=self.agent_id)
                 self.db.add(eco)
                 
             eco.balance = self.balance
@@ -81,7 +81,7 @@ class EconomyManager:
 
     def load_state(self):
         try:
-            eco = self.db.query(models.Economy).filter(models.Economy.owner_id == self.user_id).first()
+            eco = self.db.query(models.Economy).filter(models.Economy.agent_id == self.agent_id).first()
             if eco:
                 self.balance = eco.balance
                 self.transaction_history = eco.transaction_history or []

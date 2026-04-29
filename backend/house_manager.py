@@ -218,7 +218,7 @@ class HouseManager:
     """
 
     def __init__(self, user_id: int, db: Session):
-        self.user_id = user_id
+        self.agent_id = agent_id
         self.db = db
         self.rooms = copy.deepcopy(ROOM_DEFINITIONS)
         self.current_room = "kamar_tidur"
@@ -680,9 +680,9 @@ class HouseManager:
             }
         }
         try:
-            house = self.db.query(models.HouseState).filter(models.HouseState.owner_id == self.user_id).first()
+            house = self.db.query(models.HouseState).filter(models.HouseState.agent_id == self.agent_id).first()
             if not house:
-                house = models.HouseState(owner_id=self.user_id)
+                house = models.HouseState(agent_id=self.agent_id)
                 self.db.add(house)
                 
             house.current_chore_id = self.current_chore_id
@@ -695,7 +695,7 @@ class HouseManager:
 
     def load_state(self):
         try:
-            house = self.db.query(models.HouseState).filter(models.HouseState.owner_id == self.user_id).first()
+            house = self.db.query(models.HouseState).filter(models.HouseState.agent_id == self.agent_id).first()
             if not house:
                 return
                 

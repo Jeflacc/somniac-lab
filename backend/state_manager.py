@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 class StateManager:
     def __init__(self, user_id: int, db: Session):
-        self.user_id = user_id
+        self.agent_id = agent_id
         self.db = db
         self.load_config()
         
@@ -91,9 +91,9 @@ class StateManager:
     def save_state(self):
         self.last_updated_timestamp = time.time()
         
-        ai = self.db.query(models.AIInstance).filter(models.AIInstance.owner_id == self.user_id).first()
+        ai = self.db.query(models.AIAgent).filter(models.AIAgent.id == self.agent_id).first()
         if not ai:
-            ai = models.AIInstance(owner_id=self.user_id)
+            ai = models.AIAgent(agent_id=self.agent_id)
             self.db.add(ai)
             
         ai.hunger = self.hunger
@@ -123,7 +123,7 @@ class StateManager:
         self.db.commit()
 
     def load_state(self):
-        ai = self.db.query(models.AIInstance).filter(models.AIInstance.owner_id == self.user_id).first()
+        ai = self.db.query(models.AIAgent).filter(models.AIAgent.id == self.agent_id).first()
         if not ai:
             return
             
