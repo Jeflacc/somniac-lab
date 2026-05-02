@@ -12,10 +12,10 @@ export default {
       },
       colors: {
         bg: {
-          primary:   '#1a1a2e',
-          secondary: '#16162a',
-          panel:     '#1e1e3a',
-          card:      '#222244',
+          primary:   '#121212',
+          secondary: '#0a0a0a',
+          panel:     '#181818',
+          card:      '#1e1e1e',
         },
         accent: {
           DEFAULT: '#3B6255',
