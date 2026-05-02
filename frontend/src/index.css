@@ -49,16 +49,16 @@ body {
   overflow-x: hidden;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Scrollbar (Spotify-style thin & dark) */
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* Animations */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Animations (Telegram-style smooth easing) */
+@keyframes telegramSlideUp {
+  0% { opacity: 0; transform: translateY(16px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes pulse-glow {
@@ -72,8 +72,8 @@ body {
 }
 
 @keyframes typing {
-  0%, 60%, 100% { opacity: 1; }
-  30%            { opacity: 0.2; }
+  0%, 60%, 100% { opacity: 1; transform: translateY(0); }
+  30%            { opacity: 0.4; transform: translateY(-3px); }
 }
 
 @keyframes spin {
@@ -88,7 +88,9 @@ body {
 }
 
 /* Utility classes */
-.fade-up    { animation: fadeUp 0.3s ease forwards; }
+.telegram-anim {
+  animation: telegramSlideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
 .mono       { font-family: 'JetBrains Mono', monospace; }
 
 /* Flat card */
@@ -103,26 +105,17 @@ body {
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-/* Chat bubble */
-.chat-bubble-ai {
-  background: transparent;
-  padding: 12px 16px;
-  max-width: 85%;
-  animation: fadeUp 0.2s ease;
-  line-height: 1.6;
+/* Discord-style inline chat (replacing bubbles) */
+.chat-message-inline {
+  padding: 4px 16px;
+  line-height: 1.5;
   color: var(--text-primary);
+  border-radius: 4px;
+  transition: background 0.15s ease;
 }
 
-.chat-bubble-user {
+.chat-message-inline:hover {
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 12px 16px;
-  max-width: 80%;
-  margin-left: auto;
-  animation: fadeUp 0.2s ease;
-  line-height: 1.6;
-  color: var(--text-primary);
 }
 
 /* Typing dots */
@@ -175,18 +168,17 @@ body {
   font-weight: 600;
 }
 
-/* Input */
+/* Discord-style solid input */
 .chat-input {
   width: 100%;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: none;
+  border-radius: 8px;
   padding: 14px 52px 14px 16px;
   color: var(--text-primary);
   font-family: 'Sora', sans-serif;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   resize: none;
   box-shadow: none;
 }
@@ -228,27 +220,65 @@ body {
 .avatar-lg { width: 48px; height: 48px; }
 .avatar-xl { width: 64px; height: 64px; }
 
+/* Discord-style server rail avatar */
+.avatar-rail-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+}
+
 .avatar-rail {
   width: 48px;
   height: 48px;
-  border-radius: 16px;
+  border-radius: 24px;
   object-fit: cover;
   background: var(--bg-panel);
-  border: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   flex-shrink: 0;
 }
 
 .avatar-rail:hover {
-  border-radius: 12px;
-  border-color: var(--accent);
+  border-radius: 16px;
+  background: var(--accent);
 }
 
-.avatar-rail.active {
-  border-radius: 12px;
-  border-color: var(--text-primary);
-  box-shadow: 0 0 0 2px var(--accent-glow);
+.avatar-rail-container.active .avatar-rail {
+  border-radius: 16px;
+}
+
+/* Discord-style pill indicator */
+.rail-indicator {
+  position: absolute;
+  left: -12px;
+  width: 4px;
+  height: 8px;
+  background: var(--text-primary);
+  border-radius: 0 4px 4px 0;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  opacity: 0;
+}
+
+.avatar-rail-container:hover .rail-indicator {
+  height: 20px;
+  opacity: 1;
+}
+
+.avatar-rail-container.active .rail-indicator {
+  height: 40px;
+  opacity: 1;
+}
+
+/* Interactive click effect (Telegram style) */
+.btn-press {
+  transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.btn-press:active {
+  transform: scale(0.96);
 }
 
 /* Landing sections — keep light for landing */

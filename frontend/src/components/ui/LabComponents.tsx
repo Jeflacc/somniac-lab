@@ -3,13 +3,13 @@ import React from 'react'
 export function StatBar({ label, value, color }: { label: string; value: number; color: string }) {
   const pct = Math.round(value * 100)
   return (
-    <div>
+    <div className="group">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
-        <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-        <span className="mono" style={{ color, fontSize: 11 }}>{pct}%</span>
+        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</span>
+        <span className="mono group-hover:opacity-100" style={{ color: 'var(--text-muted)', fontSize: 11, opacity: 0, transition: 'opacity 0.2s' }}>{pct}%</span>
       </div>
-      <div className="stat-bar-track">
-        <div className="stat-bar-fill" style={{ width: `${pct}%`, background: color }} />
+      <div className="stat-bar-track" style={{ height: 4, background: 'var(--border)', overflow: 'hidden', borderRadius: 2 }}>
+        <div className="stat-bar-fill" style={{ width: `${pct}%`, background: color, height: '100%', borderRadius: 2, transition: 'width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)' }} />
       </div>
     </div>
   )
@@ -65,18 +65,18 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function QuickBtn({ onClick, icon, label }: { onClick: () => void; icon: string; label: string }) {
+export function QuickBtn({ onClick, icon, label }: { onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <button onClick={onClick} style={{
-      background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8,
-      padding: '8px 12px', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
-      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
-      transition: 'all 0.15s', width: '100%',
+    <button onClick={onClick} className="btn-press" style={{
+      background: 'transparent', border: '1px solid var(--border)', borderRadius: 8,
+      padding: '8px 12px', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500,
+      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+      transition: 'all 0.15s ease', width: '100%',
     }}
-    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-card)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
     >
-      <span>{icon}</span> {label}
+      <span style={{ color: 'var(--text-muted)' }}>{icon}</span> {label}
     </button>
   )
 }

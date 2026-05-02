@@ -1,4 +1,5 @@
 import { StatBar, barColor, MoodBadge, SectionTitle, QuickBtn, AgentAvatar } from './LabComponents'
+import { Moon, Sun, Utensils } from 'lucide-react'
 import type { AIState } from '../../hooks/useAIConnection'
 
 export default function StatePanel({ aiState, houseState, economy, agentName, agentPic, sendCommand }: {
@@ -90,10 +91,10 @@ export default function StatePanel({ aiState, houseState, economy, agentName, ag
       {/* Quick Actions */}
       <div>
         <SectionTitle>Quick Actions</SectionTitle>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-          <QuickBtn onClick={() => sendCommand('sleep')} icon="💤" label="Put to Sleep" />
-          <QuickBtn onClick={() => sendCommand('wake')} icon="🥱" label="Wake Up" />
-          <QuickBtn onClick={() => sendCommand('feed', 'nasi goreng')} icon="🍳" label="Feed" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+          <QuickBtn onClick={() => sendCommand('sleep')} icon={<Moon size={16} />} label="Put to Sleep" />
+          <QuickBtn onClick={() => sendCommand('wake')} icon={<Sun size={16} />} label="Wake Up" />
+          <QuickBtn onClick={() => sendCommand('feed', 'nasi goreng')} icon={<Utensils size={16} />} label="Feed" />
         </div>
       </div>
     </div>
