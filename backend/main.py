@@ -252,7 +252,7 @@ async def state_broadcast_loop():
         try:
             agents = db.query(models.AIAgent).all()
             for agent in agents:
-                if agent.id in active_ws and active_ws[user.id]:
+                if agent.id in active_ws and active_ws[agent.id]:
                     state = StateManager(agent.id, db)
                     await broadcast_to_user(agent.id, {"type": "state", "state": state.get_state_summary()})
         except Exception as e:
@@ -274,7 +274,7 @@ async def house_tick_loop():
                 journal = JournalManager(agent.id, db)
                 
                 events = house.tick()
-                if agent.id in active_ws and active_ws[user.id]:
+                if agent.id in active_ws and active_ws[agent.id]:
                     await broadcast_to_user(agent.id, {"type": "house_state", **house.get_house_state()})
 
                 # ── Mark read: AI opened WA → send read receipt ──
@@ -282,15 +282,15 @@ async def house_tick_loop():
                     if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:
                         try:
                             active_wa_handlers[agent.id].mark_read(events["mark_read_wa_message"])
-                            logger.info(f"[HOUSE] User {user.id}: mark_read sent")
+                            logger.info(f"[HOUSE] Agent {agent.id}: mark_read sent")
                         except Exception as _e:
                             logger.warning(f"[HOUSE] mark_read failed: {_e}")
 
                 # ── WhatsApp Presence: Online ↔ Offline based on holding phone ──
                 holding_now = events.get("holding_phone", False)
-                was_holding = _last_holding_phone.get(user.id, False)
+                was_holding = _last_holding_phone.get(agent.id, False)
                 if holding_now != was_holding:
-                    _last_holding_phone[user.id] = holding_now
+                    _last_holding_phone[agent.id] = holding_now
                     if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:
                         try:
                             import threading
@@ -311,11 +311,11 @@ async def house_tick_loop():
                         except Exception:
                             pass
                     
-                    async def async_wa_chat(u, text, agent_id):
+                    async def async_wa_chat(u, text, a_id):
                         db_sess = SessionLocal()
                         try:
                             req = ChatRequest(message=text)
-                            await chat_endpoint(req, u, db_sess, source="whatsapp")
+                            await chat_endpoint(req, a_id, u, db_sess, source="whatsapp")
                         except Exception as e:
                             logger.error(f"[WA CHAT ERROR] {e}")
                         finally:
@@ -323,7 +323,7 @@ async def house_tick_loop():
                             # Notify house manager that reply was sent to unblock check_wa step
                             db_house = SessionLocal()
                             try:
-                                h = HouseManager(agent_id, db_house)
+                                h = HouseManager(a_id, db_house)
                                 h.notify_wa_reply_sent()
                                 h.save_state()
                             except Exception:
@@ -331,7 +331,8 @@ async def house_tick_loop():
                             finally:
                                 db_house.close()
                                 
-                    asyncio.create_task(async_wa_chat(user, user_input, user.id))
+                    owner = db.query(models.User).filter(models.User.id == agent.owner_id).first()
+                    asyncio.create_task(async_wa_chat(owner, user_input, agent.id))
 
                 # ── Chore completed — journal it and apply side effects ──
                 if events.get("chore_completed") and events.get("chore_completed_def"):
@@ -426,7 +427,7 @@ async def autonomous_loop():
                     async with chat_lock:
                         await broadcast_to_user(agent.id, {"type": "ai_thinking", "indicator": "Thinking of something..."})
                         mems, exs = await asyncio.gather(
-                            asyncio.to_thread(memory.search_memory, user.id, AI_NAME, 1),
+                            asyncio.to_thread(memory.search_memory, agent.id, AI_NAME, 1),
                             asyncio.to_thread(memory.search_examples, current["mood"])
                         )
                         jp = await asyncio.to_thread(journal.build_journal_prompt)
@@ -565,7 +566,7 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
         ).strip()
 
         await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})
-        if source == "whatsapp" and current_agent.id in active_wa_handlers and active_wa_handlers[agent_id].is_connected:
+        if source == "whatsapp" and agent.id in active_wa_handlers and active_wa_handlers[agent_id].is_connected:
             active_wa_handlers[agent_id].send_natural_burst(ai_response)
 
         chat_history.append({"role": "user", "content": user_input})

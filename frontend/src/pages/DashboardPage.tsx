@@ -9,6 +9,8 @@ interface Agent {
   mood: string
 }
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 export default function DashboardPage() {
   const { token, logout } = useAuth()
   const navigate = useNavigate()
@@ -27,7 +29,7 @@ export default function DashboardPage() {
 
   const fetchAgents = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/agents', {
+      const res = await fetch(`${API_URL}/api/agents`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.ok) {
@@ -45,7 +47,7 @@ export default function DashboardPage() {
     if (!newName.trim() || !newPersona.trim()) return
     setCreating(true)
     try {
-      const res = await fetch('http://localhost:8000/api/agents', {
+      const res = await fetch(`${API_URL}/api/agents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

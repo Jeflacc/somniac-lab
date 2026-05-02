@@ -217,7 +217,7 @@ class HouseManager:
     Manages the physical space, inventory interactions, and chore queues.
     """
 
-    def __init__(self, user_id: int, db: Session):
+    def __init__(self, agent_id: int, db: Session):
         self.agent_id = agent_id
         self.db = db
         self.rooms = copy.deepcopy(ROOM_DEFINITIONS)

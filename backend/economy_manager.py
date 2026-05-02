@@ -10,7 +10,7 @@ class EconomyManager:
     Starting balance: Rp 50.000 (cukup buat belanja groceries beberapa kali).
     """
 
-    def __init__(self, user_id: int, db: Session, starting_balance: float = 50_000.0):
+    def __init__(self, agent_id: int, db: Session, starting_balance: float = 50_000.0):
         self.agent_id = agent_id
         self.db = db
         self.balance = starting_balance
