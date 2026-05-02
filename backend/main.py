@@ -65,7 +65,32 @@ def auto_migrate():
                 print(f"[MIGRATE] Added column users.{col_name}")
             except Exception as e:
                 print(f"[MIGRATE] Skipped users.{col_name}: {e}")
-            
+
+    # ── Multi-tenant: add agent_id to house_state, journal_entries, economy ──
+    multi_tenant_tables = ["house_state", "journal_entries", "economy"]
+    for table in multi_tenant_tables:
+        try:
+            existing_cols = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+            if existing_cols and "agent_id" not in existing_cols:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN agent_id INTEGER")
+                print(f"[MIGRATE] Added column {table}.agent_id")
+                # Try to map existing rows to the agent owned by same owner
+                try:
+                    cursor.execute(f"""
+                        UPDATE {table}
+                        SET agent_id = (
+                            SELECT ai_agents.id FROM ai_agents
+                            WHERE ai_agents.owner_id = {table}.owner_id
+                            LIMIT 1
+                        )
+                        WHERE agent_id IS NULL
+                    """)
+                    print(f"[MIGRATE] Mapped agent_id for existing {table} rows")
+                except Exception as map_err:
+                    print(f"[MIGRATE] Could not map agent_id for {table}: {map_err}")
+        except Exception as e:
+            print(f"[MIGRATE] Skipped {table}.agent_id: {e}")
+
     conn.commit()
     conn.close()
 
