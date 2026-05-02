@@ -147,6 +147,29 @@ from user_extractor import (
 )
 from whatsapp_handler import WhatsAppHandler
 
+import uuid
+
+def save_chat_message(db: Session, agent_id: int, role: str, text: str):
+    try:
+        session = db.query(models.ChatSession).filter(models.ChatSession.agent_id == agent_id).first()
+        if not session:
+            session = models.ChatSession(agent_id=agent_id, messages=[])
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+        
+        msgs = list(session.messages) if session.messages else []
+        msgs.append({
+            "id": str(uuid.uuid4()),
+            "role": role,
+            "text": text,
+            "ts": int(time.time() * 1000)
+        })
+        session.messages = msgs
+        db.commit()
+    except Exception as e:
+        logger.error(f"[CHAT SAVE] Error saving message: {e}")
+
 # Global services
 memory: Optional[MemoryManager] = None
 llm: Optional[LLMController]    = None
@@ -561,6 +584,7 @@ async def autonomous_loop():
                             rf"^(?:AI|{re.escape(AI_NAME)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
                         ).strip()
                         await broadcast_to_user(agent.id, {"type": "ai_end", "response": ai_response, "source": "autonomous"})
+                        save_chat_message(db, agent.id, "ai", ai_response)
                         if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:
                             active_wa_handlers[agent.id].send_natural_burst(ai_response)
                             
@@ -587,6 +611,19 @@ async def get_state(agent_id: int, current_user: models.User = Depends(get_curre
         "house": house.get_house_state(),
         "economy": economy.get_summary(),
     }
+
+@app.get("/api/agents/{agent_id}/chat")
+async def get_chat_history(agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent: raise HTTPException(404, "Agent not found")
+    
+    session = db.query(models.ChatSession).filter(models.ChatSession.agent_id == agent_id).first()
+    if not session or not session.messages:
+        return {"messages": []}
+        
+    msgs = session.messages
+    # Return last 100 messages
+    return {"messages": msgs[-100:]}
 
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db), source: str = "web"):
@@ -672,6 +709,7 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
         ).strip()
 
         await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})
+        save_chat_message(db, agent_id, "ai", ai_response)
         if source == "whatsapp" and agent.id in active_wa_handlers and active_wa_handlers[agent_id].is_connected:
             active_wa_handlers[agent_id].send_natural_burst(ai_response)
 
@@ -809,6 +847,7 @@ async def websocket_endpoint(ws: WebSocket, token: str = None, agent_id: int = N
                 await broadcast_to_user(agent_id, {"type": "user_message", "text": user_text})
                 
                 db = SessionLocal()
+                save_chat_message(db, agent_id, "user", user_text)
                 req = ChatRequest(message=user_text)
                 try:
                     result = await chat_endpoint(req, agent_id, user, db)
