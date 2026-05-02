@@ -9,7 +9,7 @@ import StatePanel from '../components/ui/StatePanel'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-interface Agent { id: number; name: string; persona: string; mood: string; profile_picture?: string | null }
+interface Agent { id: number; name: string; persona: string; mood: string; profile_picture?: string | null; model_provider?: string }
 
 function formatTime(ts: number) {
   const d = new Date(ts)
