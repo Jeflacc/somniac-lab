@@ -445,6 +445,11 @@ async def house_tick_loop():
                     on_complete = chore_def.get("on_complete")
                     if on_complete == "hunger_reset":
                         state.reset_state("eat")
+                        consumed_item = state.consume_food(qty=1)
+                        if consumed_item:
+                            journal.add_entry(f"Cooked and ate {consumed_item}, feeling much better now.", "eat")
+                        else:
+                            journal.add_entry(f"Tried to eat, but there was no food in the fridge! Still hungry.", "eat")
                     elif on_complete == "sleep":
                         state.reset_state("sleep")
                     elif on_complete == "wake":
@@ -466,9 +471,10 @@ async def house_tick_loop():
                 # ── Autonomous lifecycle triggers ──
                 if not state.is_sleeping and not house.current_chore_id and not house.chore_queue:
                     if state.hunger >= 0.65 and house.needs_eat():
-                        house.enqueue_chore("eat")
+                        if state.can_cook():
+                            house.enqueue_chore("eat")
                     elif house.needs_shower():
-                        house.enqueue_chore("shower")
+                        house.enqueue_chore("mandi")
                     elif house.needs_laundry():
                         house.enqueue_chore("laundry")
                     elif house.boredom > 0.75:
@@ -728,8 +734,10 @@ async def run_command_endpoint(req: CommandRequest, agent_id: int, current_user:
     elif cmd == "feed":
         item = req.payload or "mysterious food"
         state.add_food(item.lower().replace(" ", "_"), item, 1, "piece", "🍱")
+        if not house.current_chore_id or house.current_chore_id != "eat":
+            house.enqueue_chore("eat", priority=True)
         await broadcast_to_user(agent_id, {"type": "inventory_state", **state.get_inventory_state()})
-        return {"ok": True, "msg": f"Gave {item} to {AI_NAME}"}
+        return {"ok": True, "msg": f"Gave {item} to {AI_NAME}. They are heading to the kitchen to eat."}
     elif cmd == "status":
         return {"ok": True, "state": state.get_state_summary()}
     else:

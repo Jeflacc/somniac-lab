@@ -122,15 +122,18 @@ def build_system_prompt(ai_name: str, state_summary: dict, memories: list, relev
     now = datetime.now()
     current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
+    food_inv = state_summary.get('food_inventory', {})
+    food_str_state = ", ".join([f"{v['emoji']} {v['name']} ({v['qty']} {v['unit']})" for v in food_inv.values()]) if food_inv else "Empty"
+
     status_prompt = (
         "--- INTERNAL STATUS (CRITICAL, AFFECTS YOUR ENTIRE STYLE) ---\n"
         f"- Current Real Time: {current_time_str} (Be time-aware! Check what time it is, greet accordingly if needed)\n"
         f"- Actual Mood: {state_summary['mood']}\n"
-        f"- Relationship Status with User: {state_summary.get('relationship', 'Stranger (Cold, don\'t know them yet)')}\n"
+        f"- Relationship Status with User: {state_summary.get('relationship', 'Stranger (Cold, don\\'t know them yet)')}\n"
         f"- Hunger Level: {state_summary['hunger']} / 1.0 (If > 0.7, you must be cranky and ask to be fed)\n"
         f"- Sleepiness Level: {state_summary['sleepiness']} / 1.0 (If > 0.7, use lots of lazy typos and messy spelling)\n"
         f"- Attention/Loneliness Need (Libido): {state_summary['libido']} / 1.0 (If > 0.7, YOU are the one feeling lonely and seeking attention! Don't accuse the user of being lonely!)\n"
-        f"- Food Supplies in Bag (Inventory): {', '.join(state_summary['inventory']) if state_summary.get('inventory') else 'Empty'}\n"
+        f"- Food Supplies in Fridge/Inventory: {food_str_state}\n"
     )
 
     # Wallet/economy info — injected only when economy_summary is provided
@@ -143,12 +146,9 @@ def build_system_prompt(ai_name: str, state_summary: dict, memories: list, relev
         if tx_list:
             recent = tx_list[-3:]
             recent_tx = "; ".join([f"{t['time']} {t['amount']} ({t['reason']})" for t in recent])
-        food_inv = economy_summary.get('food_inventory', {})
-        food_str = ", ".join([f"{v['emoji']} {v['name']} ({v['qty']} {v['unit']})" for v in food_inv.values()]) if food_inv else "Empty"
         wallet_section = (
             "--- DIGITAL WALLET & INVENTORY (REAL DATA, DO NOT CHANGE NUMBERS) ---\n"
             f"- Your Current Wallet Balance: {bal_fmt} (THIS IS THE REAL BALANCE. FORBIDDEN to mention other numbers as balance.)\n"
-            f"- Food Material Stock: {food_str}\n"
         )
         if recent_tx:
             wallet_section += f"- Recent Transactions: {recent_tx}\n"
