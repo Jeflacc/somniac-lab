@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
-import LabPage from './pages/LabPage'
 import DashboardPage from './pages/DashboardPage'
 import { AuthPage } from './pages/AuthPage'
 import PricingPage from './pages/PricingPage'
@@ -28,7 +27,7 @@ function AppRoutes() {
       } />
       <Route path="/lab/:agentId" element={
         <ProtectedRoute>
-          <LabPage />
+          <DashboardPage />
         </ProtectedRoute>
       } />
     </Routes>

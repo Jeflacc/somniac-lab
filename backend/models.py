@@ -13,6 +13,7 @@ class User(Base):
     is_pro = Column(Boolean, default=False)
     otp = Column(String, nullable=True)
     otp_expiry = Column(Float, nullable=True)
+    profile_picture = Column(String, nullable=True)  # base64 data URL
     
     ai_agents = relationship("AIAgent", back_populates="owner")
 
@@ -40,6 +41,7 @@ class AIAgent(Base):
     # WhatsApp Multi-Tenant Fields
     whatsapp_number = Column(String, default="")
     whatsapp_connected = Column(Boolean, default=False)
+    profile_picture = Column(String, nullable=True)  # base64 data URL
     
     owner = relationship("User", back_populates="ai_agents")
     economy = relationship("Economy", back_populates="agent", uselist=False)

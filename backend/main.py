@@ -91,6 +91,16 @@ def auto_migrate():
         except Exception as e:
             print(f"[MIGRATE] Skipped {table}.agent_id: {e}")
 
+    # ── Profile pictures: add profile_picture to users and ai_agents ──
+    for table in ["users", "ai_agents"]:
+        try:
+            existing_cols = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+            if existing_cols and "profile_picture" not in existing_cols:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN profile_picture TEXT DEFAULT NULL")
+                print(f"[MIGRATE] Added column {table}.profile_picture")
+        except Exception as e:
+            print(f"[MIGRATE] Skipped {table}.profile_picture: {e}")
+
     conn.commit()
     conn.close()
 
@@ -250,7 +260,7 @@ async def create_agent(req: CreateAgentRequest, current_user: models.User = Depe
 @app.get("/api/agents")
 async def list_agents(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     agents = db.query(models.AIAgent).filter(models.AIAgent.owner_id == current_user.id).all()
-    return [{"id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood} for a in agents]
+    return [{"id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood, "profile_picture": a.profile_picture} for a in agents]
 
 @app.delete("/api/agents/{agent_id}")
 async def delete_agent(agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -285,6 +295,37 @@ async def delete_agent(agent_id: int, current_user: models.User = Depends(get_cu
 
     logger.info(f"[DELETE] Agent {agent_id} deleted by user {current_user.username}")
     return {"ok": True, "deleted_id": agent_id}
+
+
+# ── Profile Endpoints ──
+
+class ProfilePictureRequest(BaseModel):
+    image: str  # base64 data URL
+
+@app.get("/api/profile")
+async def get_profile(current_user: models.User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "profile_picture": current_user.profile_picture,
+        "is_pro": current_user.is_pro,
+    }
+
+@app.put("/api/profile/picture")
+async def update_profile_picture(req: ProfilePictureRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_user.profile_picture = req.image
+    db.commit()
+    return {"ok": True}
+
+@app.put("/api/agents/{agent_id}/picture")
+async def update_agent_picture(agent_id: int, req: ProfilePictureRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    agent.profile_picture = req.image
+    db.commit()
+    return {"ok": True}
 
 
 @app.get("/health")

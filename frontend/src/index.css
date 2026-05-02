@@ -5,24 +5,29 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary:   #FFFFFF;
-  --bg-secondary: #F9FAFB; /* gray-50 */
-  --bg-panel:     #F3F4F6; /* gray-100 */
-  --bg-card:      #FFFFFF;
-  --border:       #E5E7EB; /* gray-200 */
-  --border-hover: #D1D5DB; /* gray-300 */
-  --text-primary: #111827; /* gray-900 */
-  --text-secondary: #4B5563; /* gray-600 */
-  --text-muted:   #9CA3AF; /* gray-400 */
+  --bg-primary:   #1a1a2e;
+  --bg-secondary: #16162a;
+  --bg-panel:     #1e1e3a;
+  --bg-card:      #222244;
+  --border:       #2a2a4a;
+  --border-hover: #3a3a5a;
+  --text-primary: #e4e4f0;
+  --text-secondary: #8888aa;
+  --text-muted:   #555577;
   
-  --accent:       #3B6255; /* The logo color */
-  --accent-glow:  rgba(249, 115, 22, 0.15); /* Orange glow */
-  --accent-2:     #F97316; /* Playful orange complement */
+  --accent:       #3B6255;
+  --accent-glow:  rgba(59, 98, 85, 0.25);
+  --accent-2:     #F97316;
   
   --green:        #10B981;
   --red:          #EF4444;
   --yellow:       #F59E0B;
   --blue:         #3B82F6;
+
+  /* Layout sizes */
+  --rail-width:    72px;
+  --sidebar-width: 240px;
+  --panel-width:   280px;
 }
 
 * {
@@ -47,8 +52,8 @@ body {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 /* Animations */
 @keyframes fadeUp {
@@ -86,16 +91,16 @@ body {
 .fade-up    { animation: fadeUp 0.3s ease forwards; }
 .mono       { font-family: 'JetBrains Mono', monospace; }
 
-/* Flat card instead of glass */
+/* Flat card */
 .glass {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .glass:hover {
   border-color: var(--border-hover);
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 /* Chat bubble */
@@ -109,7 +114,8 @@ body {
 }
 
 .chat-bubble-user {
-  background: var(--bg-panel);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 12px 16px;
   max-width: 80%;
@@ -172,8 +178,8 @@ body {
 /* Input */
 .chat-input {
   width: 100%;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-hover);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 14px 52px 14px 16px;
   color: var(--text-primary);
@@ -182,12 +188,16 @@ body {
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   resize: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  box-shadow: none;
 }
 
 .chat-input:focus {
-  border-color: var(--accent-2);
+  border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.chat-input::placeholder {
+  color: var(--text-muted);
 }
 
 /* Pill badge */
@@ -203,7 +213,58 @@ body {
   text-transform: uppercase;
 }
 
-/* Landing sections */
+/* Avatar */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-panel);
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.avatar-sm { width: 28px; height: 28px; }
+.avatar-lg { width: 48px; height: 48px; }
+.avatar-xl { width: 64px; height: 64px; }
+
+.avatar-rail {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  object-fit: cover;
+  background: var(--bg-panel);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.avatar-rail:hover {
+  border-radius: 12px;
+  border-color: var(--accent);
+}
+
+.avatar-rail.active {
+  border-radius: 12px;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* Landing sections — keep light for landing */
 .hero-gradient {
   background: transparent;
+}
+
+/* Override for landing/auth pages (light mode) */
+.light-page {
+  --bg-primary:   #FFFFFF;
+  --bg-secondary: #F9FAFB;
+  --bg-panel:     #F3F4F6;
+  --bg-card:      #FFFFFF;
+  --border:       #E5E7EB;
+  --border-hover: #D1D5DB;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted:   #9CA3AF;
 }

@@ -92,7 +92,7 @@ function WordFlipper() {
 export default function LandingPage() {
   return (
     <div
-      className="min-h-screen overflow-y-auto"
+      className="light-page min-h-screen overflow-y-auto"
       style={{ background: 'var(--bg-primary)' }}
     >
       {/* Nav */}

@@ -88,7 +88,7 @@ export function AuthPage() {
   };
 
   return (
-    <div className="relative w-full h-screen">
+    <div className="light-page relative w-full h-screen">
       {error && (
         <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-red-500/10 border border-red-500/50 text-red-200 px-6 py-2 rounded-full backdrop-blur-md text-sm animate-in fade-in slide-in-from-top-4">
           {error}
