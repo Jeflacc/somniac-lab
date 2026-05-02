@@ -17,11 +17,15 @@ export default function DashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Modal state
+  // Spawn modal state
   const [showModal, setShowModal] = useState(false)
   const [newName, setNewName] = useState('Evelyn')
   const [newPersona, setNewPersona] = useState('Helpful and friendly AI assistant.')
   const [creating, setCreating] = useState(false)
+
+  // Delete confirm state
+  const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchAgents()
@@ -65,6 +69,25 @@ export default function DashboardPage() {
       console.error('Failed to create agent', err)
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`${API_URL}/api/agents/${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setAgents(agents.filter(a => a.id !== deleteTarget.id))
+        setDeleteTarget(null)
+      }
+    } catch (err) {
+      console.error('Failed to delete agent', err)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -129,7 +152,6 @@ export default function DashboardPage() {
             {agents.map(agent => (
               <div 
                 key={agent.id}
-                onClick={() => navigate(`/lab/${agent.id}`)}
                 style={{
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
@@ -140,6 +162,7 @@ export default function DashboardPage() {
                   position: 'relative',
                   overflow: 'hidden'
                 }}
+                onClick={() => navigate(`/lab/${agent.id}`)}
                 onMouseEnter={e => {
                   e.currentTarget.style.borderColor = 'var(--text-primary)'
                   e.currentTarget.style.transform = 'translateY(-2px)'
@@ -154,9 +177,45 @@ export default function DashboardPage() {
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 8px var(--green)' }} />
                     {agent.name}
                   </div>
-                  <span className="badge" style={{ fontSize: 11, background: 'rgba(52,211,153,0.1)', color: '#34d399' }}>
-                    {agent.mood || 'Netral'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="badge" style={{ fontSize: 11, background: 'rgba(52,211,153,0.1)', color: '#34d399' }}>
+                      {agent.mood || 'Netral'}
+                    </span>
+                    {/* Delete button */}
+                    <button
+                      id={`delete-agent-${agent.id}`}
+                      onClick={e => {
+                        e.stopPropagation()
+                        setDeleteTarget(agent)
+                      }}
+                      title="Delete agent"
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid transparent',
+                        borderRadius: 6,
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: '4px 6px',
+                        fontSize: 14,
+                        lineHeight: 1,
+                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'rgba(239,68,68,0.12)'
+                        e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'
+                        e.currentTarget.style.color = '#ef4444'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.borderColor = 'transparent'
+                        e.currentTarget.style.color = 'var(--text-muted)'
+                      }}
+                    >
+                      🗑
+                    </button>
+                  </div>
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {agent.persona}
@@ -211,6 +270,42 @@ export default function DashboardPage() {
                 style={{ flex: 1, padding: 10, background: 'var(--text-primary)', border: 'none', borderRadius: 8, color: 'var(--bg-primary)', fontWeight: 600, cursor: 'pointer' }}
               >
                 {creating ? 'Spawning...' : 'Spawn AI'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-primary)', padding: 32, borderRadius: 16, width: 380, border: '1px solid rgba(239,68,68,0.3)' }}>
+            <div style={{ fontSize: 36, marginBottom: 16, textAlign: 'center' }}>⚠️</div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>Delete Agent?</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
+              You are about to permanently delete
+            </p>
+            <p style={{ fontWeight: 700, fontSize: 16, textAlign: 'center', marginBottom: 8 }}>
+              "{deleteTarget.name}"
+            </p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 12, textAlign: 'center', marginBottom: 28 }}>
+              This will erase all memory, journals, house state, and economy data. This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                style={{ flex: 1, padding: '10px 0', background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 500 }}
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-delete-agent"
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{ flex: 1, padding: '10px 0', background: '#ef4444', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.15s', opacity: deleting ? 0.6 : 1 }}
+              >
+                {deleting ? 'Deleting...' : 'Yes, Delete'}
               </button>
             </div>
           </div>

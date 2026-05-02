@@ -252,6 +252,40 @@ async def list_agents(current_user: models.User = Depends(get_current_user), db:
     agents = db.query(models.AIAgent).filter(models.AIAgent.owner_id == current_user.id).all()
     return [{"id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood} for a in agents]
 
+@app.delete("/api/agents/{agent_id}")
+async def delete_agent(agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    # Close active WebSocket connections for this agent
+    if agent_id in active_ws:
+        for ws in list(active_ws[agent_id]):
+            try:
+                await ws.close(code=1001)
+            except Exception:
+                pass
+        del active_ws[agent_id]
+
+    # Stop WhatsApp handler if running
+    if agent_id in active_wa_handlers:
+        try:
+            active_wa_handlers[agent_id].disconnect()
+        except Exception:
+            pass
+        del active_wa_handlers[agent_id]
+
+    # Delete all related records
+    db.query(models.Economy).filter(models.Economy.agent_id == agent_id).delete()
+    db.query(models.HouseState).filter(models.HouseState.agent_id == agent_id).delete()
+    db.query(models.JournalEntry).filter(models.JournalEntry.agent_id == agent_id).delete()
+    db.query(models.ChatSession).filter(models.ChatSession.agent_id == agent_id).delete()
+    db.delete(agent)
+    db.commit()
+
+    logger.info(f"[DELETE] Agent {agent_id} deleted by user {current_user.username}")
+    return {"ok": True, "deleted_id": agent_id}
+
 
 @app.get("/health")
 async def health():
