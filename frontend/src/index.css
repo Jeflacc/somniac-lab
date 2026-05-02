@@ -247,6 +247,40 @@ body {
   background: var(--accent);
 }
 
+/* Rail Tooltip */
+.rail-tooltip {
+  position: absolute;
+  left: 64px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.9);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  pointer-events: none;
+  opacity: 0;
+  white-space: nowrap;
+  z-index: 100;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: left center;
+  border: 1px solid var(--border);
+}
+
+.avatar-rail-container:hover .rail-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.rail-tooltip-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-top: 2px;
+}
+
 .avatar-rail-container.active .avatar-rail {
   border-radius: 16px;
 }

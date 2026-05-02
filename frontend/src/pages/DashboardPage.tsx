@@ -175,22 +175,26 @@ export default function DashboardPage() {
       {/* ═══ Icon Rail (Discord Style) ═══ */}
       <div style={{ width: 72, background: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: 12, flexShrink: 0 }}>
         {/* Logo */}
-        <div onClick={() => navigate('/')} className="btn-press avatar-rail-container" style={{ cursor: 'pointer', marginBottom: 8 }}>
+        <div onClick={() => navigate('/lab')} className="btn-press avatar-rail-container" style={{ cursor: 'pointer', marginBottom: 8 }}>
           <div className="avatar-rail" style={{ background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <EvelynEye size={28} />
           </div>
+          <div className="rail-tooltip">Main Menu</div>
         </div>
         <div style={{ width: 32, height: 2, background: 'var(--border)', borderRadius: 2, marginBottom: 4 }} />
 
         {/* Agent icons */}
         {agents.map(a => (
           <div key={a.id} onClick={() => { navigate(`/lab/${a.id}`); setTab('chat') }}
-            title={a.name}
             className={`btn-press avatar-rail-container ${selectedId === a.id ? 'active' : ''}`}
             style={{ cursor: 'pointer' }}>
             <div className="rail-indicator" />
             <div className="avatar-rail" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <AgentAvatar src={a.profile_picture} name={a.name} size={48} />
+            </div>
+            <div className="rail-tooltip">
+              {a.name}
+              <div className="rail-tooltip-sub">Model: {a.model_provider || 'Unknown'}</div>
             </div>
           </div>
         ))}
