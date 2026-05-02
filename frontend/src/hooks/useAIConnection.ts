@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export type AIState = {
   hunger:      number
@@ -124,6 +125,23 @@ export function useAIConnection(agentId: string | undefined) {
   }, [addMessage])
 
   useEffect(() => {
+    if (token && agentId) {
+      fetch(`${API_URL}/api/agents/${agentId}/chat`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.messages) {
+          setMessages(data.messages)
+        } else {
+          setMessages([])
+        }
+      })
+      .catch(err => console.error("Failed to fetch chat history:", err))
+    } else {
+      setMessages([])
+    }
+
     connect()
     return () => {
       clearTimeout(reconnectRef.current)
