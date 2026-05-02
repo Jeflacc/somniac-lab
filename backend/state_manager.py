@@ -62,14 +62,17 @@ class StateManager:
         # Load from disk
         self.load_state()
         
-        # Catch up time if app was closed for a significant period
+        # Catch up time if app was closed for a significant period.
+        # Only run if we have a real saved timestamp (non-zero) and the gap is
+        # longer than 60 s — avoids spamming on every fresh instantiation.
         current_time = time.time()
         time_elapsed = current_time - self.last_updated_timestamp
-        if time_elapsed > 30:
+        if self.last_updated_timestamp > 0 and time_elapsed > 60:
             logging.info(f"App was offline for {time_elapsed:.1f} seconds. Catching up biology state...")
             self.update_state_over_time(seconds_elapsed=time_elapsed)
-            
+
         self._evaluate_mood()
+
 
     def load_config(self):
         default_cfg = {
