@@ -153,6 +153,48 @@ import discord_manager
 
 import uuid
 
+# ── Discord message handler: called by discord_manager when a message arrives ──
+async def discord_message_handler(agent_id: int, channel_id: int, author_name: str, content: str):
+    if not llm:
+        return
+    db = SessionLocal()
+    try:
+        agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id).first()
+        if not agent:
+            return
+        owner = db.query(models.User).filter(models.User.id == agent.owner_id).first()
+        state = StateManager(agent_id, db)
+        if state.is_sleeping:
+            return
+        house = HouseManager(agent_id, db)
+        journal = JournalManager(agent_id, db)
+        current = state.get_state_summary()
+        mems, exs, jp = await asyncio.gather(
+            asyncio.to_thread(memory.search_memory, agent_id, content, 3),
+            asyncio.to_thread(memory.search_examples, content + " " + current.get("mood", "")),
+            asyncio.to_thread(journal.build_journal_prompt),
+        )
+        tz = owner.timezone if owner else "Asia/Jakarta"
+        static_p, dynamic_p = build_system_prompt(
+            agent.name, current, mems, exs, jp, house.get_prompt_context(), user_timezone=tz
+        )
+        hidden = f"[AI INTERNAL SYSTEM]:\n{dynamic_p}\n\n[DISCORD MESSAGE from {author_name}]:\n{content}\n[SYSTEM HINT]: Reply naturally and conversationally. Keep it brief."
+        ai_response = ""
+        async for chunk in llm.generate_response_stream(static_p, user_prompt=hidden, chat_history=[]):
+            ai_response += chunk
+        ai_response = strip_all_system_tags(ai_response)
+        ai_response = re.sub(rf"^(?:AI|{re.escape(agent.name)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE).strip()
+        if ai_response:
+            await discord_manager.send_channel_message(agent_id, channel_id, ai_response)
+            save_chat_message(db, agent_id, "ai", f"[Discord] {ai_response}")
+            logger.info(f"[DISCORD] Agent {agent_id} replied to {author_name}: {ai_response[:80]}")
+    except Exception as e:
+        logger.error(f"[DISCORD MSG HANDLER] {e}")
+    finally:
+        db.close()
+
+discord_manager.register_message_callback(discord_message_handler)
+
 def save_chat_message(db: Session, agent_id: int, role: str, text: str):
     try:
         session = db.query(models.ChatSession).filter(models.ChatSession.agent_id == agent_id).first()
@@ -241,8 +283,9 @@ async def lifespan(app: FastAPI):
                 if agent.discord_token:
                     try:
                         token = discord_manager.decrypt_token(agent.discord_token)
+                        ch_id = int(agent.discord_channel_id) if agent.discord_channel_id else None
                         if token:
-                            await discord_manager.start_discord_bot(agent.id, token)
+                            await discord_manager.start_discord_bot(agent.id, token, channel_id=ch_id)
                             logger.info(f"[DISCORD] Resumed bot for Agent {agent.id}")
                     except Exception as e:
                         logger.error(f"[DISCORD] Failed to resume bot for Agent {agent.id}: {e}")
@@ -411,8 +454,10 @@ async def sync_discord(agent_id: int, req: DiscordSyncRequest, current_user: mod
     agent.discord_connected = True
     db.commit()
     
-    # Start bot
-    await discord_manager.start_discord_bot(agent.id, req.token)
+    # Start bot (stop existing first to apply new channel_id)
+    await discord_manager.stop_discord_bot(agent.id)
+    ch_id = int(req.channel_id) if req.channel_id else None
+    await discord_manager.start_discord_bot(agent.id, req.token, channel_id=ch_id)
     return {"ok": True}
 
 @app.post("/api/agents/{agent_id}/discord/disconnect")
@@ -428,6 +473,14 @@ async def disconnect_discord(agent_id: int, current_user: models.User = Depends(
     
     await discord_manager.stop_discord_bot(agent.id)
     return {"ok": True}
+
+@app.get("/api/agents/{agent_id}/discord/info")
+async def get_discord_info(agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    info = discord_manager.get_bot_info(agent_id)
+    return info or {}
 
 # ── Shop & Inventory Endpoints ──
 

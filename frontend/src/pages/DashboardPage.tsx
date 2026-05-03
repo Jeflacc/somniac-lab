@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect, KeyboardEvent, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { MessageSquare, Book, Settings, LogOut, Send, AlertTriangle, Smartphone, Plus } from 'lucide-react'
+import { MessageSquare, Book, Settings, LogOut, Send, AlertTriangle, Plus } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useAIConnection, type Message } from '../hooks/useAIConnection'
 import { AgentAvatar, EvelynEye } from '../components/ui/LabComponents'
 import StatePanel from '../components/ui/StatePanel'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingBag, Newspaper, Hash } from 'lucide-react'
+import { ShoppingBag, Newspaper } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -94,6 +94,34 @@ function StreamingBubbleInline({ text, name, pic }: { text: string; name: string
   )
 }
 
+function IntegrationCell({ icon, color, label, description, connected, children }: { icon: string; color: string; label: string; description: string; connected: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ background: 'var(--bg-card)', border: `1px solid ${open ? color + '55' : 'var(--border)'}`, borderRadius: 12, marginBottom: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{icon}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>{label}</span>
+            {connected && <span style={{ fontSize: 10, fontWeight: 700, background: '#22c55e22', color: '#22c55e', padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Connected</span>}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{description}</div>
+        </div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 18, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>›</div>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }} style={{ overflow: 'hidden' }}>
+            <div style={{ padding: '0 20px 20px 76px', borderTop: `1px solid var(--border)`, paddingTop: 20 }}>
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { agentId } = useParams()
   const navigate = useNavigate()
@@ -123,6 +151,7 @@ export default function DashboardPage() {
   const [discordToken, setDiscordToken] = useState('')
   const [discordChannelId, setDiscordChannelId] = useState('')
   const [discordConnecting, setDiscordConnecting] = useState(false)
+  const [discordBotInfo, setDiscordBotInfo] = useState<{name: string; id: string; avatar_url: string | null} | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -203,6 +232,13 @@ export default function DashboardPage() {
             await fetchAgents()
             setDiscordToken('')
             setDiscordChannelId('')
+            // Poll for bot info — bot needs a moment to log in
+            setTimeout(async () => {
+              try {
+                const infoRes = await fetch(`${API_URL}/api/agents/${selectedAgent.id}/discord/info`, { headers: { Authorization: `Bearer ${token}` } })
+                if (infoRes.ok) { const info = await infoRes.json(); if (info.name) setDiscordBotInfo(info) }
+              } catch {}
+            }, 3000)
         }
     } catch (e) {
         console.error(e)
@@ -221,6 +257,7 @@ export default function DashboardPage() {
         })
         if (res.ok) {
             await fetchAgents()
+            setDiscordBotInfo(null)
         }
     } catch (e) {
         console.error(e)
@@ -228,6 +265,16 @@ export default function DashboardPage() {
         setDiscordConnecting(false)
     }
   }
+
+  // Fetch bot info when switching to settings tab with a connected agent
+  useEffect(() => {
+    if (tab === 'settings' && selectedAgent?.discord_connected) {
+      fetch(`${API_URL}/api/agents/${selectedAgent.id}/discord/info`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(info => { if (info?.name) setDiscordBotInfo(info) })
+        .catch(() => {})
+    }
+  }, [tab, selectedAgent?.id, selectedAgent?.discord_connected])
 
   const buyItem = async (item: any) => {
     try {
@@ -547,91 +594,121 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Agent avatar & banner */}
-            <div style={{ background: 'var(--bg-card)', padding: 32, borderRadius: 16, border: '1px solid var(--border)', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20 }}>Agent Profile Customization</h3>
-              
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Banner Image</label>
-                <div style={{ position: 'relative', width: '100%', height: 120, background: 'var(--bg-panel)', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', marginBottom: 12 }}>
-                  {selectedAgent.banner_picture ? <img src={selectedAgent.banner_picture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No Banner</div>}
+            {/* Agent Profile Card — Discord style */}
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', marginBottom: 24, overflow: 'hidden' }}>
+              <div
+                onClick={() => handleAvatarUpload('banner', selectedAgent.id)}
+                style={{ position: 'relative', height: 140, cursor: 'pointer', background: selectedAgent.banner_picture ? `url(${selectedAgent.banner_picture}) center/cover` : 'linear-gradient(135deg,#5865f2,#eb459e)' }}
+                onMouseEnter={e => { const o = (e.currentTarget.querySelector('.banner-hint') as HTMLElement); if (o) o.style.opacity = '1' }}
+                onMouseLeave={e => { const o = (e.currentTarget.querySelector('.banner-hint') as HTMLElement); if (o) o.style.opacity = '0' }}
+              >
+                <div className="banner-hint" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 14, opacity: 0, transition: 'opacity 0.2s' }}>
+                  Click to change banner
                 </div>
-                <button onClick={() => handleAvatarUpload('banner', selectedAgent.id)} className="btn-press" style={{ background: 'var(--bg-panel)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Change Banner</button>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                <AgentAvatar src={selectedAgent.profile_picture} name={selectedAgent.name} size={80} />
-                <div>
-                  <button onClick={() => handleAvatarUpload('agent', selectedAgent.id)} className="btn-press" style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-                    Upload Picture
-                  </button>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>JPEG, PNG, or WebP. 200x200 recommended.</p>
+              <div style={{ padding: '0 24px 28px', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: -44, left: 24, cursor: 'pointer' }} onClick={() => handleAvatarUpload('agent', selectedAgent.id)}>
+                  <div style={{ border: '5px solid var(--bg-card)', borderRadius: '50%', background: 'var(--bg-card)', position: 'relative', display: 'inline-block' }}>
+                    <AgentAvatar src={selectedAgent.profile_picture} name={selectedAgent.name} size={88} />
+                    <div style={{ position: 'absolute', bottom: 4, right: 4, width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-panel)', border: '2px solid var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>✏️</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 54 }}>
+                  <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: '-0.5px', marginBottom: 2 }}>{selectedAgent.name}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Somniac AI Entity · {selectedAgent.mood || 'neutral'}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Display Name</label>
+                      <input defaultValue={selectedAgent.name} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Mood</label>
+                      <input readOnly value={selectedAgent.mood || '—'} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: 14, outline: 'none' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bio / Persona</label>
+                    <textarea readOnly rows={3} value={selectedAgent.persona} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14, outline: 'none', resize: 'none', lineHeight: 1.5 }} />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* WhatsApp */}
-            <div style={{ background: 'var(--bg-card)', padding: 32, borderRadius: 16, border: '1px solid var(--border)', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Smartphone size={20} style={{ color: '#25D366' }} /> WhatsApp Connection
-              </h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.6 }}>
-                Connect this agent to a WhatsApp number to enable autonomous 24/7 messaging.
-              </p>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>MASTER PHONE NUMBER</label>
-                <input type="text" value={masterPhone} onChange={e => setMasterPhone(e.target.value)} placeholder="e.g. 628123456789"
-                  style={{ width: '100%', maxWidth: 360, padding: '12px 16px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
-              </div>
-              <button onClick={() => generateQr(masterPhone)} className="btn-press" style={{ background: 'var(--bg-panel)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '10px 24px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
-                Generate Pairing QR
-              </button>
-              
-              {qrString && (
-                <div className="telegram-anim" style={{ marginTop: 24, padding: 24, background: 'var(--bg-primary)', borderRadius: 16, border: '1px solid var(--border)', display: 'inline-block' }}>
-                  {qrString === 'LOADING' ? <div style={{ padding: 20, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ animation: 'spin 1s linear infinite', width: 16, height: 16, border: '2px solid var(--border)', borderTopColor: 'var(--text-primary)', borderRadius: '50%' }} /> Generating Session...</div>
-                   : qrString === 'CONNECTED' ? <div style={{ padding: 20, color: 'var(--green)', fontWeight: 600 }}>🟢 WhatsApp Connected Successfully!</div>
-                   : <div style={{ textAlign: 'center' }}>
-                       <p style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)' }}>Open WhatsApp {'>'} Linked Devices {'>'} Link a Device</p>
-                       <div style={{ background: 'white', padding: 16, borderRadius: 12, display: 'inline-block' }}><QRCodeSVG value={qrString} size={200} /></div>
-                     </div>}
-                </div>
-              )}
-            </div>
+            {/* Connected Platforms */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Connected Platforms</div>
 
-            {/* Discord */}
-            <div style={{ background: 'var(--bg-card)', padding: 32, borderRadius: 16, border: '1px solid var(--border)', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Hash size={20} style={{ color: '#5865F2' }} /> Discord Autonomy Sync
-              </h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.6 }}>
-                Give this agent a Discord bot token to allow them to autonomously read a timeline channel and post / DM you. Token is encrypted in the database.
-              </p>
-              
-              {selectedAgent.discord_connected ? (
-                <div className="telegram-anim" style={{ marginTop: 24, padding: 24, background: 'var(--bg-primary)', borderRadius: 16, border: '1px solid var(--border)', display: 'inline-block' }}>
-                   <div style={{ padding: 10, color: 'var(--green)', fontWeight: 600, marginBottom: 12 }}>🟢 Discord Connected Successfully!</div>
-                   <button onClick={handleDiscordDisconnect} disabled={discordConnecting} className="btn-press" style={{ background: 'var(--bg-panel)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '10px 24px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
-                     {discordConnecting ? 'Disconnecting...' : 'Disconnect Bot'}
-                   </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 360 }}>
+              <IntegrationCell icon="📱" color="#25D366" label="WhatsApp" description="Text autonomously via your WhatsApp number" connected={false}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                    Scan the QR code with WhatsApp under <strong>Linked Devices → Link a Device</strong>. Your agent will be able to text you 24/7.
+                  </p>
                   <div>
-                    <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>BOT TOKEN</label>
-                    <input type="password" value={discordToken} onChange={e => setDiscordToken(e.target.value)} placeholder="Paste bot token here..."
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Phone Number</label>
+                    <input type="text" value={masterPhone} onChange={e => setMasterPhone(e.target.value)} placeholder="e.g. 628123456789"
+                      style={{ width: '100%', maxWidth: 320, padding: '10px 14px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>TIMELINE CHANNEL ID</label>
-                    <input type="text" value={discordChannelId} onChange={e => setDiscordChannelId(e.target.value)} placeholder="e.g. 1234567890"
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
-                  </div>
-                  <button onClick={handleDiscordConnect} disabled={discordConnecting || !discordToken || !discordChannelId} className="btn-press" style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '12px 24px', borderRadius: 8, fontWeight: 600, cursor: (discordConnecting || !discordToken || !discordChannelId) ? 'default' : 'pointer', opacity: (discordConnecting || !discordToken || !discordChannelId) ? 0.5 : 1 }}>
-                    {discordConnecting ? 'Connecting...' : 'Connect Discord'}
+                  <button onClick={() => generateQr(masterPhone)} className="btn-press" style={{ alignSelf: 'flex-start', background: '#25D366', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
+                    Generate QR Code
                   </button>
+                  {qrString && (
+                    <div style={{ marginTop: 4 }}>
+                      {qrString === 'LOADING' && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>⏳ Generating session...</div>}
+                      {qrString === 'CONNECTED' && <div style={{ color: '#25D366', fontWeight: 600 }}>🟢 WhatsApp Connected!</div>}
+                      {qrString !== 'LOADING' && qrString !== 'CONNECTED' && (
+                        <div><p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Open WhatsApp → Linked Devices → Link a Device</p>
+                        <div style={{ background: 'white', padding: 12, borderRadius: 12, display: 'inline-block' }}><QRCodeSVG value={qrString} size={180} /></div></div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
+              </IntegrationCell>
+
+              <IntegrationCell icon="🎮" color="#5865F2" label="Discord" description="Read timelines and post autonomously in Discord" connected={!!selectedAgent.discord_connected}>
+                {selectedAgent.discord_connected ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Bot profile card */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', background: 'var(--bg-primary)', borderRadius: 12, border: '1px solid var(--border)' }}>
+                      {discordBotInfo?.avatar_url
+                        ? <img src={discordBotInfo.avatar_url} style={{ width: 52, height: 52, borderRadius: '50%', border: '3px solid #5865F255', objectFit: 'cover' }} />
+                        : <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#5865F222', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🤖</div>
+                      }
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 16 }}>{discordBotInfo?.name ?? 'Bot Connected'}</div>
+                        {discordBotInfo?.id && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>ID: {discordBotInfo.id}</div>}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, background: '#22c55e22', color: '#22c55e', padding: '4px 10px', borderRadius: 20 }}>● LIVE</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      🤖 Bot is online and will respond to messages in your designated channel.
+                    </div>
+                    <button onClick={handleDiscordDisconnect} disabled={discordConnecting} className="btn-press"
+                      style={{ alignSelf: 'flex-start', background: 'var(--bg-panel)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
+                      {discordConnecting ? 'Disconnecting...' : 'Disconnect Bot'}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                      Create a bot at the <strong>Discord Developer Portal</strong>, enable <strong>Message Content Intent</strong>, then paste your token. Tokens are <strong>encrypted</strong> before storage.
+                    </p>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Bot Token</label>
+                      <input type="password" value={discordToken} onChange={e => setDiscordToken(e.target.value)} placeholder="Paste bot token..."
+                        style={{ width: '100%', maxWidth: 360, padding: '10px 14px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Timeline Channel ID</label>
+                      <input type="text" value={discordChannelId} onChange={e => setDiscordChannelId(e.target.value)} placeholder="Right-click channel → Copy ID"
+                        style={{ width: '100%', maxWidth: 360, padding: '10px 14px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
+                    </div>
+                    <button onClick={handleDiscordConnect} disabled={discordConnecting || !discordToken || !discordChannelId} className="btn-press"
+                      style={{ alignSelf: 'flex-start', background: '#5865F2', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', opacity: (!discordToken || !discordChannelId) ? 0.5 : 1 }}>
+                      {discordConnecting ? 'Connecting...' : 'Connect Discord'}
+                    </button>
+                  </div>
+                )}
+              </IntegrationCell>
             </div>
 
             {/* Danger zone */}
@@ -647,6 +724,7 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
 
       {/* ═══ Right Panel ═══ */}
       {selectedAgent && (
