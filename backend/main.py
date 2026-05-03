@@ -660,6 +660,14 @@ async def autonomous_loop():
                     elif current["sleepiness"] > 0.8:
                         trigger = True
                         reason  = "Extremely sleepy, can barely stay awake."
+                    else:
+                        import random
+                        if state.interaction_count > 0 and random.random() < 0.15:
+                            trigger = True
+                            if current["libido"] > 0.6:
+                                reason = "You are feeling lonely and affectionate. Text the user to see what they are up to or just to say hi."
+                            else:
+                                reason = "You are bored. Text the user a random thought or ask how their day is going."
 
                 if trigger and not chat_lock.locked():
                     async with chat_lock:

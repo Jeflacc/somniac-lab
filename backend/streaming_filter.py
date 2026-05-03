@@ -16,7 +16,7 @@ class StreamingTagFilter:
     - Semua karakter dibuang sampai `[/PIKIR]` ditemukan
     """
 
-    SYSTEM_TAG_PREFIXES = ["[CATAT", "[INGAT", "[STIKER", "[LOG", "[REMEMBER", "[STICKER"]
+    SYSTEM_TAG_PREFIXES = ["[CATAT", "[INGAT", "[STIKER", "[LOG", "[REMEMBER", "[STICKER", "[NOTE"]
     BLOCK_OPEN  = "[THINK]"
     BLOCK_CLOSE = "[/THINK]"
     # Legacy support
