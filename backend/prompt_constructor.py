@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Optional
+import pytz
 
-def build_system_prompt(ai_name: str, state_summary: dict, memories: list, relevant_examples: str = "", journal_prompt: str = "", house_context: str = "", economy_summary: Optional[dict] = None) -> tuple[str, str]:
+def build_system_prompt(ai_name: str, state_summary: dict, memories: list, relevant_examples: str = "", journal_prompt: str = "", house_context: str = "", economy_summary: Optional[dict] = None, user_timezone: str = "Asia/Jakarta") -> tuple[str, str]:
     """
     Merakit System Prompt menjadi dua bagian: Static (KV-Cache) dan Dynamic (Status Internal).
     """
@@ -119,7 +120,11 @@ def build_system_prompt(ai_name: str, state_summary: dict, memories: list, relev
     # ---------------------------------------------------------
     # DYNAMIC PROMPT (This text changes every second/every chat)
     # ---------------------------------------------------------
-    now = datetime.now()
+    try:
+        tz = pytz.timezone(user_timezone)
+    except Exception:
+        tz = pytz.timezone("Asia/Jakarta")
+    now = datetime.now(tz)
     current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
     food_inv = state_summary.get('food_inventory', {})

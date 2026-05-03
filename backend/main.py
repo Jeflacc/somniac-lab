@@ -40,6 +40,7 @@ def auto_migrate():
     migrations_ai = [
         ("whatsapp_number", "TEXT DEFAULT NULL"),
         ("whatsapp_connected", "BOOLEAN DEFAULT 0"),
+        ("banner_picture", "TEXT DEFAULT NULL"),
     ]
     for col_name, col_def in migrations_ai:
         if col_name not in existing_ai:
@@ -57,6 +58,8 @@ def auto_migrate():
         ("is_pro", "BOOLEAN DEFAULT 0"),
         ("otp", "TEXT DEFAULT NULL"),
         ("otp_expiry", "FLOAT DEFAULT NULL"),
+        ("inventory", "JSON DEFAULT '[]'"),
+        ("timezone", "TEXT DEFAULT 'Asia/Jakarta'"),
     ]
     for col_name, col_def in user_migrations:
         if col_name not in existing_users:
@@ -261,10 +264,12 @@ app.include_router(payments_router, prefix="/api/payments", tags=["Payments"])
 class CreateAgentRequest(BaseModel):
     name: str
     base_persona: str = "Helpful and friendly AI assistant."
+    profile_picture: Optional[str] = None
+    banner_picture: Optional[str] = None
 
 @app.post("/api/agents")
 async def create_agent(req: CreateAgentRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    new_agent = models.AIAgent(owner_id=current_user.id, name=req.name, base_persona=req.base_persona)
+    new_agent = models.AIAgent(owner_id=current_user.id, name=req.name, base_persona=req.base_persona, profile_picture=req.profile_picture, banner_picture=req.banner_picture)
     db.add(new_agent)
     db.commit()
     db.refresh(new_agent)
@@ -283,7 +288,7 @@ async def create_agent(req: CreateAgentRequest, current_user: models.User = Depe
 @app.get("/api/agents")
 async def list_agents(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     agents = db.query(models.AIAgent).filter(models.AIAgent.owner_id == current_user.id).all()
-    return [{"id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood, "profile_picture": a.profile_picture} for a in agents]
+    return [{"id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood, "profile_picture": a.profile_picture, "banner_picture": a.banner_picture} for a in agents]
 
 @app.delete("/api/agents/{agent_id}")
 async def delete_agent(agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -333,7 +338,18 @@ async def get_profile(current_user: models.User = Depends(get_current_user)):
         "email": current_user.email,
         "profile_picture": current_user.profile_picture,
         "is_pro": current_user.is_pro,
+        "timezone": current_user.timezone,
+        "inventory": current_user.inventory,
     }
+
+class SettingsRequest(BaseModel):
+    timezone: str
+
+@app.put("/api/user/settings")
+async def update_user_settings(req: SettingsRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_user.timezone = req.timezone
+    db.commit()
+    return {"ok": True, "timezone": current_user.timezone}
 
 @app.put("/api/profile/picture")
 async def update_profile_picture(req: ProfilePictureRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -350,6 +366,99 @@ async def update_agent_picture(agent_id: int, req: ProfilePictureRequest, curren
     db.commit()
     return {"ok": True}
 
+@app.put("/api/agents/{agent_id}/banner")
+async def update_agent_banner(agent_id: int, req: ProfilePictureRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    agent.banner_picture = req.image
+    db.commit()
+    return {"ok": True}
+
+# ── Shop & Inventory Endpoints ──
+
+@app.get("/api/shop")
+async def get_shop_items():
+    return [
+        {"id": "pizza", "name": "Pizza", "emoji": "🍕", "price": 50000, "type": "food", "description": "A delicious slice of pizza."},
+        {"id": "coffee", "name": "Coffee", "emoji": "☕", "price": 25000, "type": "food", "description": "Energizing iced coffee."},
+        {"id": "cake", "name": "Cake", "emoji": "🍰", "price": 35000, "type": "food", "description": "Sweet strawberry cake."},
+        {"id": "ramen", "name": "Ramen", "emoji": "🍜", "price": 60000, "type": "food", "description": "Hot spicy ramen."},
+        {"id": "teddy", "name": "Teddy Bear", "emoji": "🧸", "price": 100000, "type": "gift", "description": "A cute fluffy teddy bear."},
+        {"id": "flower", "name": "Flower Bouquet", "emoji": "💐", "price": 75000, "type": "gift", "description": "A beautiful bouquet of flowers."}
+    ]
+
+class BuyRequest(BaseModel):
+    item_id: str
+    name: str
+    emoji: str
+    type: str
+
+@app.post("/api/shop/buy")
+async def buy_item(req: BuyRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    inv = list(current_user.inventory) if current_user.inventory else []
+    # Find if exists
+    found = False
+    for item in inv:
+        if item.get("id") == req.item_id:
+            item["qty"] = item.get("qty", 0) + 1
+            found = True
+            break
+    if not found:
+        inv.append({"id": req.item_id, "name": req.name, "emoji": req.emoji, "type": req.type, "qty": 1})
+    
+    current_user.inventory = inv
+    db.commit()
+    return {"ok": True, "inventory": inv}
+
+class FeedGiveRequest(BaseModel):
+    item_id: str
+    name: str
+    emoji: str
+
+@app.post("/api/agents/{agent_id}/feed")
+async def feed_agent(agent_id: int, req: FeedGiveRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent: raise HTTPException(404, "Agent not found")
+    
+    inv = list(current_user.inventory) if current_user.inventory else []
+    item_idx = next((i for i, v in enumerate(inv) if v.get("id") == req.item_id), -1)
+    if item_idx == -1 or inv[item_idx].get("qty", 0) <= 0:
+        raise HTTPException(400, "Item not found in your inventory")
+        
+    inv[item_idx]["qty"] -= 1
+    if inv[item_idx]["qty"] <= 0:
+        inv.pop(item_idx)
+    current_user.inventory = inv
+    db.commit()
+    
+    state = StateManager(agent_id, db)
+    house = HouseManager(agent_id, db)
+    state.add_food(req.item_id, req.name, 1, "piece", req.emoji)
+    if not house.current_chore_id or house.current_chore_id != "eat":
+        house.enqueue_chore("eat", priority=True)
+    await broadcast_to_user(agent_id, {"type": "inventory_state", **state.get_inventory_state()})
+    return {"ok": True, "msg": f"Gave {req.name} to {agent.name}.", "inventory": inv}
+
+@app.post("/api/agents/{agent_id}/give")
+async def give_agent(agent_id: int, req: FeedGiveRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent: raise HTTPException(404, "Agent not found")
+    
+    inv = list(current_user.inventory) if current_user.inventory else []
+    item_idx = next((i for i, v in enumerate(inv) if v.get("id") == req.item_id), -1)
+    if item_idx == -1 or inv[item_idx].get("qty", 0) <= 0:
+        raise HTTPException(400, "Item not found in your inventory")
+        
+    inv[item_idx]["qty"] -= 1
+    if inv[item_idx]["qty"] <= 0:
+        inv.pop(item_idx)
+    current_user.inventory = inv
+    db.commit()
+    
+    journal = JournalManager(agent_id, db)
+    journal.add_entry(f"Received a {req.name} from {current_user.username}. So sweet!", "event")
+    return {"ok": True, "msg": f"Gave {req.name} to {agent.name}.", "inventory": inv}
 
 @app.get("/health")
 async def health():
@@ -561,8 +670,10 @@ async def autonomous_loop():
                         )
                         jp = await asyncio.to_thread(journal.build_journal_prompt)
 
+                        owner = db.query(models.User).filter(models.User.id == agent.owner_id).first()
+                        tz = owner.timezone if owner else "Asia/Jakarta"
                         static_p, dynamic_p = build_system_prompt(
-                            AI_NAME, current, mems, exs, jp, house.get_prompt_context()
+                            AI_NAME, current, mems, exs, jp, house.get_prompt_context(), user_timezone=tz
                         )
                         secret = f"[SYSTEM]: Take the initiative to start a conversation because {reason}"
                         hidden = f"[AI INTERNAL SYSTEM]:\n{dynamic_p}\n\n{secret}"
@@ -665,7 +776,7 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
         econ["food_inventory"] = state.food_inventory
 
         static_p, dynamic_p = build_system_prompt(
-            AI_NAME, current, mems, exs, jp, house.get_prompt_context(), economy_summary=econ
+            AI_NAME, current, mems, exs, jp, house.get_prompt_context(), economy_summary=econ, user_timezone=current_user.timezone
         )
 
         word_count = len(user_input.split())

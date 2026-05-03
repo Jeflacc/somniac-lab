@@ -535,7 +535,14 @@ class HouseManager:
             steps_labels = [s["label"] for s in steps_def]
         else:
             total_steps = 0
-            step_label = "Chilling at home"
+            
+            # Check if agent is sleeping
+            ai = self.db.query(models.AIAgent).filter(models.AIAgent.id == self.agent_id).first()
+            if ai and ai.is_sleeping:
+                step_label = "Sleeping 😴"
+            else:
+                step_label = "Chilling at home"
+                
             step_progress = 0.0
             steps_labels = []
 

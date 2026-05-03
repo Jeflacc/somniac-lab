@@ -14,6 +14,8 @@ class User(Base):
     otp = Column(String, nullable=True)
     otp_expiry = Column(Float, nullable=True)
     profile_picture = Column(String, nullable=True)  # base64 data URL
+    inventory = Column(JSON, default=[])
+    timezone = Column(String, default="Asia/Jakarta")
     
     ai_agents = relationship("AIAgent", back_populates="owner")
 
@@ -42,6 +44,7 @@ class AIAgent(Base):
     whatsapp_number = Column(String, default="")
     whatsapp_connected = Column(Boolean, default=False)
     profile_picture = Column(String, nullable=True)  # base64 data URL
+    banner_picture = Column(String, nullable=True)   # base64 data URL
     
     owner = relationship("User", back_populates="ai_agents")
     economy = relationship("Economy", back_populates="agent", uselist=False)
