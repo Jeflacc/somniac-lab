@@ -665,7 +665,7 @@ async def autonomous_loop():
                     async with chat_lock:
                         await broadcast_to_user(agent.id, {"type": "ai_thinking", "indicator": "Thinking of something..."})
                         mems, exs = await asyncio.gather(
-                            asyncio.to_thread(memory.search_memory, agent.id, AI_NAME, 1),
+                            asyncio.to_thread(memory.search_memory, agent.id, agent.name, 1),
                             asyncio.to_thread(memory.search_examples, current["mood"])
                         )
                         jp = await asyncio.to_thread(journal.build_journal_prompt)
@@ -673,7 +673,7 @@ async def autonomous_loop():
                         owner = db.query(models.User).filter(models.User.id == agent.owner_id).first()
                         tz = owner.timezone if owner else "Asia/Jakarta"
                         static_p, dynamic_p = build_system_prompt(
-                            AI_NAME, current, mems, exs, jp, house.get_prompt_context(), user_timezone=tz
+                            agent.name, current, mems, exs, jp, house.get_prompt_context(), user_timezone=tz
                         )
                         secret = f"[SYSTEM]: Take the initiative to start a conversation because {reason}"
                         hidden = f"[AI INTERNAL SYSTEM]:\n{dynamic_p}\n\n{secret}"
@@ -692,7 +692,7 @@ async def autonomous_loop():
 
                         ai_response = strip_all_system_tags(ai_response)
                         ai_response = re.sub(
-                            rf"^(?:AI|{re.escape(AI_NAME)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
+                            rf"^(?:AI|{re.escape(agent.name)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
                         ).strip()
                         await broadcast_to_user(agent.id, {"type": "ai_end", "response": ai_response, "source": "autonomous"})
                         save_chat_message(db, agent.id, "ai", ai_response)
@@ -753,7 +753,7 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
     journal = JournalManager(agent_id, db)
 
     if state.is_sleeping:
-        return {"response": f"*{AI_NAME} is sleeping... sshh*", "mood": state.mood}
+        return {"response": f"*{agent.name} is sleeping... sshh*", "mood": state.mood}
 
     async with chat_lock:
         state.increase_familiarity()
@@ -776,7 +776,7 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
         econ["food_inventory"] = state.food_inventory
 
         static_p, dynamic_p = build_system_prompt(
-            AI_NAME, current, mems, exs, jp, house.get_prompt_context(), economy_summary=econ, user_timezone=current_user.timezone
+            agent.name, current, mems, exs, jp, house.get_prompt_context(), economy_summary=econ, user_timezone=current_user.timezone
         )
 
         word_count = len(user_input.split())
@@ -816,7 +816,7 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
 
         ai_response = strip_all_system_tags(ai_response)
         ai_response = re.sub(
-            rf"^(?:AI|{re.escape(AI_NAME)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
+            rf"^(?:AI|{re.escape(agent.name)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
         ).strip()
 
         await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})
@@ -874,19 +874,19 @@ async def run_command_endpoint(req: CommandRequest, agent_id: int, current_user:
         state.reset_state("sleep")
         house.enqueue_chore("sleep_routine", priority=True)
         journal.add_entry("Ordered to sleep by user via web.", "sleep")
-        return {"ok": True, "msg": f"{AI_NAME} is now sleeping 💤"}
+        return {"ok": True, "msg": f"{agent.name} is now sleeping 💤"}
     elif cmd == "wake":
         state.reset_state("wake")
         house.enqueue_chore("wake_routine", priority=True)
         journal.add_entry("Woken up by user via web.", "sleep")
-        return {"ok": True, "msg": f"{AI_NAME} is awake 🥱"}
+        return {"ok": True, "msg": f"{agent.name} is awake 🥱"}
     elif cmd == "feed":
         item = req.payload or "mysterious food"
         state.add_food(item.lower().replace(" ", "_"), item, 1, "piece", "🍱")
         if not house.current_chore_id or house.current_chore_id != "eat":
             house.enqueue_chore("eat", priority=True)
         await broadcast_to_user(agent_id, {"type": "inventory_state", **state.get_inventory_state()})
-        return {"ok": True, "msg": f"Gave {item} to {AI_NAME}. They are heading to the kitchen to eat."}
+        return {"ok": True, "msg": f"Gave {item} to {agent.name}. They are heading to the kitchen to eat."}
     elif cmd == "status":
         return {"ok": True, "state": state.get_state_summary()}
     else:
