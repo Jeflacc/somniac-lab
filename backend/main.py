@@ -892,6 +892,42 @@ async def run_command_endpoint(req: CommandRequest, agent_id: int, current_user:
     else:
         raise HTTPException(400, f"Unknown command: {cmd}")
 
+class NewsCreateRequest(BaseModel):
+    title: str
+    content: str
+    banner_image: Optional[str] = None
+
+@app.get("/api/news")
+async def get_news(db: Session = Depends(get_db)):
+    news = db.query(models.NewsPost).order_by(models.NewsPost.created_at.desc()).all()
+    return news
+
+@app.post("/api/news")
+async def create_news(req: NewsCreateRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.username != "jeflacc":
+        raise HTTPException(403, "Access Denied")
+    post = models.NewsPost(
+        title=req.title,
+        content=req.content,
+        banner_image=req.banner_image,
+        author=current_user.username
+    )
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+    return post
+
+@app.delete("/api/news/{post_id}")
+async def delete_news(post_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.username != "jeflacc":
+        raise HTTPException(403, "Access Denied")
+    post = db.query(models.NewsPost).filter(models.NewsPost.id == post_id).first()
+    if not post:
+        raise HTTPException(404, "Post not found")
+    db.delete(post)
+    db.commit()
+    return {"ok": True}
+
 import jwt
 from auth import SECRET_KEY, ALGORITHM
 

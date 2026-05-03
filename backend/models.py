@@ -94,3 +94,12 @@ class ChatSession(Base):
     messages = Column(JSON, default=[])
     
     agent = relationship("AIAgent", back_populates="chat_sessions")
+
+class NewsPost(Base):
+    __tablename__ = "news_posts"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    content = Column(String)  # HTML content from rich text editor
+    banner_image = Column(String, nullable=True) # Base64
+    created_at = Column(Float, default=time.time)
+    author = Column(String, default="jeflacc")

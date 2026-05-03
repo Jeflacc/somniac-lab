@@ -27,6 +27,8 @@ export type Message = {
 export type HouseState = {
   current_chore_id: string | null
   current_chore_label: string | null
+  current_chore_emoji?: string | null
+  chore_step_label?: string | null
   boredom: number
   showers_today: number
   dirty_laundry_count: number

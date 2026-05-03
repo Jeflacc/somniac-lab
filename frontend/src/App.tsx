@@ -5,6 +5,8 @@ import { AuthPage } from './pages/AuthPage'
 import PricingPage from './pages/PricingPage'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 
+import AdminPage from './pages/AdminPage'
+
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { isAuthenticated } = useAuth()
   if (!isAuthenticated) {
@@ -20,6 +22,11 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/auth" element={isAuthenticated ? <Navigate to="/lab" replace /> : <AuthPage />} />
+      <Route path="/admin" element={
+        <ProtectedRoute>
+          <AdminPage />
+        </ProtectedRoute>
+      } />
       <Route path="/lab" element={
         <ProtectedRoute>
           <DashboardPage />
