@@ -41,6 +41,7 @@ def auto_migrate():
         ("whatsapp_number", "TEXT DEFAULT NULL"),
         ("whatsapp_connected", "BOOLEAN DEFAULT 0"),
         ("banner_picture", "TEXT DEFAULT NULL"),
+        ("avatar_decoration", "TEXT DEFAULT NULL"),
     ]
     for col_name, col_def in migrations_ai:
         if col_name not in existing_ai:
@@ -352,6 +353,7 @@ async def list_agents(current_user: models.User = Depends(get_current_user), db:
     return [{
         "id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood,
         "profile_picture": a.profile_picture, "banner_picture": a.banner_picture,
+        "avatar_decoration": a.avatar_decoration,
         "discord_connected": a.discord_connected, "discord_channel_id": a.discord_channel_id,
         "whatsapp_connected": a.whatsapp_connected, "whatsapp_number": a.whatsapp_number
     } for a in agents]
@@ -438,6 +440,16 @@ async def update_agent_banner(agent_id: int, req: ProfilePictureRequest, current
     if not agent:
         raise HTTPException(404, "Agent not found")
     agent.banner_picture = req.image
+    db.commit()
+    return {"ok": True}
+
+@app.put("/api/agents/{agent_id}/decoration")
+async def update_agent_decoration(agent_id: int, req: ProfilePictureRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    # If image is empty string, clear it (null)
+    agent.avatar_decoration = req.image if req.image else None
     db.commit()
     return {"ok": True}
 

@@ -45,6 +45,7 @@ class AIAgent(Base):
     whatsapp_connected = Column(Boolean, default=False)
     profile_picture = Column(String, nullable=True)  # base64 data URL
     banner_picture = Column(String, nullable=True)   # base64 data URL
+    avatar_decoration = Column(String, nullable=True) # base64 data URL
     
     # Discord Multi-Tenant Fields
     discord_token = Column(String, default="")       # encrypted

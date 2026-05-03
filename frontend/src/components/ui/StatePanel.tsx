@@ -2,12 +2,13 @@ import { StatBar, barColor, MoodBadge, SectionTitle, QuickBtn, AgentAvatar } fro
 import { Moon, Sun, Utensils } from 'lucide-react'
 import type { AIState } from '../../hooks/useAIConnection'
 
-export default function StatePanel({ aiState, houseState, economy, agentName, agentPic, sendCommand }: {
+export default function StatePanel({ aiState, houseState, economy, agentName, agentPic, agentDecoration, sendCommand }: {
   aiState: AIState | null
   houseState: any
   economy: any
   agentName: string
   agentPic?: string | null
+  agentDecoration?: string | null
   sendCommand: (cmd: string, payload?: string) => void
 }) {
   if (!aiState) {
@@ -30,7 +31,7 @@ export default function StatePanel({ aiState, houseState, economy, agentName, ag
       {/* Agent header */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <AgentAvatar src={agentPic} name={agentName} size={44} />
+          <AgentAvatar src={agentPic} name={agentName} decoration={agentDecoration} size={44} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{agentName}</div>
             <MoodBadge mood={aiState.mood} />

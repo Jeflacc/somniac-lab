@@ -36,22 +36,34 @@ export function MoodBadge({ mood }: { mood: string }) {
   )
 }
 
-export function AgentAvatar({ src, name, size = 40, className = '' }: { src?: string | null; name: string; size?: number; className?: string }) {
-  if (src) {
-    return <img src={src} alt={name} className={className} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, background: 'var(--bg-panel)' }} />
+export function AgentAvatar({ src, name, decoration, size = 40, className = '' }: { src?: string | null; name: string; decoration?: string | null; size?: number; className?: string }) {
+  const renderAvatar = () => {
+    if (src) {
+      return <img src={src} alt={name} className={className} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, background: 'var(--bg-panel)' }} />
+    }
+    const initial = (name || '?')[0].toUpperCase()
+    const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
+    return (
+      <div className={className} style={{
+        width: size, height: size, borderRadius: '50%', background: `hsl(${hue}, 40%, 30%)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: `hsl(${hue}, 60%, 75%)`, fontWeight: 700, fontSize: size * 0.4, flexShrink: 0,
+      }}>
+        {initial}
+      </div>
+    )
   }
-  const initial = (name || '?')[0].toUpperCase()
-  const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
+
+  if (!decoration) return renderAvatar()
+
   return (
-    <div className={className} style={{
-      width: size, height: size, borderRadius: '50%', background: `hsl(${hue}, 40%, 30%)`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: `hsl(${hue}, 60%, 75%)`, fontWeight: 700, fontSize: size * 0.4, flexShrink: 0,
-    }}>
-      {initial}
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      {renderAvatar()}
+      <img src={decoration} alt="Decoration" style={{ position: 'absolute', top: '-10%', left: '-10%', width: '120%', height: '120%', pointerEvents: 'none', zIndex: 10 }} />
     </div>
   )
 }
+
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (

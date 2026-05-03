@@ -12,14 +12,14 @@ import { ShoppingBag, Newspaper } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-interface Agent { id: number; name: string; persona: string; mood: string; profile_picture?: string | null; banner_picture?: string | null; model_provider?: string; discord_connected?: boolean }
+interface Agent { id: number; name: string; persona: string; mood: string; profile_picture?: string | null; banner_picture?: string | null; avatar_decoration?: string | null; model_provider?: string; discord_connected?: boolean; discord_channel_id?: string; whatsapp_connected?: boolean; whatsapp_number?: string }
 
 function formatTime(ts: number) {
   const d = new Date(ts)
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function ChatMessageInline({ msg, agentName, agentPic }: { msg: Message; agentName: string; agentPic?: string | null }) {
+function ChatMessageInline({ msg, agentName, agentPic, agentDecoration }: { msg: Message; agentName: string; agentPic?: string | null; agentDecoration?: string | null }) {
   if (msg.role === 'system') return (
     <div className="telegram-anim" style={{ textAlign: 'center', padding: '12px 0' }}>
       <span className="badge" style={{ background: 'rgba(251,191,36,0.08)', color: '#fbbf24', fontSize: 11 }}>{msg.text}</span>
@@ -34,7 +34,7 @@ function ChatMessageInline({ msg, agentName, agentPic }: { msg: Message; agentNa
         {isUser ? (
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-panel)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>You</div>
         ) : (
-          <AgentAvatar src={agentPic} name={agentName} size={40} />
+          <AgentAvatar src={agentPic} name={agentName} decoration={agentDecoration} size={40} />
         )}
       </div>
       <div style={{ flex: 1, position: 'relative' }}>
@@ -57,11 +57,11 @@ function ChatMessageInline({ msg, agentName, agentPic }: { msg: Message; agentNa
   )
 }
 
-function TypingIndicatorInline({ name, pic }: { name: string; pic?: string | null }) {
+function TypingIndicatorInline({ name, pic, decoration }: { name: string; pic?: string | null; decoration?: string | null }) {
   return (
     <div className="chat-message-inline telegram-anim" style={{ display: 'flex', gap: 16, marginTop: 4 }}>
       <div style={{ marginTop: 2 }}>
-        <AgentAvatar src={pic} name={name} size={40} />
+        <AgentAvatar src={pic} name={name} decoration={decoration} size={40} />
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
@@ -75,11 +75,11 @@ function TypingIndicatorInline({ name, pic }: { name: string; pic?: string | nul
   )
 }
 
-function StreamingBubbleInline({ text, name, pic }: { text: string; name: string; pic?: string | null }) {
+function StreamingBubbleInline({ text, name, pic, decoration }: { text: string; name: string; pic?: string | null; decoration?: string | null }) {
   return (
     <div className="chat-message-inline telegram-anim" style={{ display: 'flex', gap: 16, marginTop: 4 }}>
       <div style={{ marginTop: 2 }}>
-        <AgentAvatar src={pic} name={name} size={40} />
+        <AgentAvatar src={pic} name={name} decoration={decoration} size={40} />
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
@@ -314,7 +314,7 @@ export default function DashboardPage() {
     }
   }, [tab, selectedAgent])
 
-  const handleAvatarUpload = async (type: 'user' | 'agent' | 'banner', agentIdNum?: number) => {
+  const handleAvatarUpload = async (type: 'user' | 'agent' | 'banner' | 'decoration', agentIdNum?: number) => {
     const input = document.createElement('input')
     input.type = 'file'; input.accept = 'image/*'
     input.onchange = async (e: any) => {
@@ -342,7 +342,10 @@ export default function DashboardPage() {
           await fetch(`${API_URL}/api/profile/picture`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: dataUrl }) })
           setProfilePicture(dataUrl)
         } else if (agentIdNum) {
-          const url = isBanner ? `${API_URL}/api/agents/${agentIdNum}/banner` : `${API_URL}/api/agents/${agentIdNum}/picture`
+          const isDecoration = type === 'decoration'
+          const url = isBanner ? `${API_URL}/api/agents/${agentIdNum}/banner` : 
+                      isDecoration ? `${API_URL}/api/agents/${agentIdNum}/decoration` : 
+                      `${API_URL}/api/agents/${agentIdNum}/picture`
           await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: dataUrl }) })
           await fetchAgents()
         } else {
@@ -377,7 +380,7 @@ export default function DashboardPage() {
             style={{ cursor: 'pointer' }}>
             <div className="rail-indicator" />
             <div className="avatar-rail" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AgentAvatar src={a.profile_picture} name={a.name} size={48} />
+              <AgentAvatar src={a.profile_picture} name={a.name} decoration={a.avatar_decoration} size={48} />
             </div>
             <div className="rail-tooltip">
               {a.name}
@@ -516,9 +519,9 @@ export default function DashboardPage() {
               </div>
             )}
             
-            {messages.map(msg => <ChatMessageInline key={msg.id} msg={msg} agentName={selectedAgent.name} agentPic={selectedAgent.profile_picture} />)}
-            {isThinking && streamBuffer && <StreamingBubbleInline text={streamBuffer} name={selectedAgent.name} pic={selectedAgent.profile_picture} />}
-            {isThinking && !streamBuffer && <TypingIndicatorInline name={selectedAgent.name} pic={selectedAgent.profile_picture} />}
+            {messages.map(msg => <ChatMessageInline key={msg.id} msg={msg} agentName={selectedAgent.name} agentPic={selectedAgent.profile_picture} agentDecoration={selectedAgent.avatar_decoration} />)}
+            {isThinking && !streamBuffer && <TypingIndicatorInline name={selectedAgent.name} pic={selectedAgent.profile_picture} decoration={selectedAgent.avatar_decoration} />}
+            {isThinking && streamBuffer && <StreamingBubbleInline text={streamBuffer} name={selectedAgent.name} pic={selectedAgent.profile_picture} decoration={selectedAgent.avatar_decoration} />}
             <div ref={bottomRef} style={{ height: 20 }} />
           </div>
           
@@ -623,7 +626,7 @@ export default function DashboardPage() {
               <div style={{ padding: '0 24px 28px', position: 'relative' }}>
                 <div style={{ position: 'absolute', top: -44, left: 24, cursor: 'pointer' }} onClick={() => handleAvatarUpload('agent', selectedAgent.id)}>
                   <div style={{ border: '5px solid var(--bg-card)', borderRadius: '50%', background: 'var(--bg-card)', position: 'relative', display: 'inline-block' }}>
-                    <AgentAvatar src={selectedAgent.profile_picture} name={selectedAgent.name} size={88} />
+                    <AgentAvatar src={selectedAgent.profile_picture} name={selectedAgent.name} decoration={selectedAgent.avatar_decoration} size={88} />
                     <div style={{ position: 'absolute', bottom: 4, right: 4, width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-panel)', border: '2px solid var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>✏️</div>
                   </div>
                 </div>
@@ -642,7 +645,20 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bio / Persona</label>
-                    <textarea readOnly rows={3} value={selectedAgent.persona} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14, outline: 'none', resize: 'none', lineHeight: 1.5 }} />
+                    <textarea readOnly rows={3} value={selectedAgent.persona} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14, outline: 'none', resize: 'none', lineHeight: 1.5, marginBottom: 16 }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button onClick={() => handleAvatarUpload('decoration', selectedAgent.id)} className="btn-press" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      {selectedAgent.avatar_decoration ? 'Change Avatar Decoration' : 'Set Avatar Decoration'}
+                    </button>
+                    {selectedAgent.avatar_decoration && (
+                      <button onClick={async () => {
+                        await fetch(`${API_URL}/api/agents/${selectedAgent.id}/decoration`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: "" }) })
+                        await fetchAgents()
+                      }} className="btn-press" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                        Remove Decoration
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -746,7 +762,7 @@ export default function DashboardPage() {
           <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
             <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', fontWeight: 700 }}>AC Dashboard</div>
           </div>
-          <StatePanel aiState={aiState} houseState={houseState} economy={economy} agentName={selectedAgent.name} agentPic={selectedAgent.profile_picture} sendCommand={sendCommand} />
+          <StatePanel aiState={aiState} houseState={houseState} economy={economy} agentName={selectedAgent.name} agentPic={selectedAgent.profile_picture} agentDecoration={selectedAgent.avatar_decoration} sendCommand={sendCommand} />
         </div>
       )}
 
