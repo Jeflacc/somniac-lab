@@ -375,6 +375,40 @@ async def update_agent_banner(agent_id: int, req: ProfilePictureRequest, current
     db.commit()
     return {"ok": True}
 
+class DiscordSyncRequest(BaseModel):
+    token: str
+    channel_id: str
+
+@app.post("/api/agents/{agent_id}/discord/sync")
+async def sync_discord(agent_id: int, req: DiscordSyncRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    
+    encrypted = discord_manager.encrypt_token(req.token)
+    agent.discord_token = encrypted
+    agent.discord_channel_id = req.channel_id
+    agent.discord_connected = True
+    db.commit()
+    
+    # Start bot
+    await discord_manager.start_discord_bot(agent.id, req.token)
+    return {"ok": True}
+
+@app.post("/api/agents/{agent_id}/discord/disconnect")
+async def disconnect_discord(agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    
+    agent.discord_token = ""
+    agent.discord_channel_id = ""
+    agent.discord_connected = False
+    db.commit()
+    
+    await discord_manager.stop_discord_bot(agent.id)
+    return {"ok": True}
+
 # ── Shop & Inventory Endpoints ──
 
 @app.get("/api/shop")
@@ -680,11 +714,22 @@ async def autonomous_loop():
 
                         owner = db.query(models.User).filter(models.User.id == agent.owner_id).first()
                         tz = owner.timezone if owner else "Asia/Jakarta"
+                        
+                        discord_timeline = ""
+                        if agent.discord_connected and agent.discord_channel_id:
+                            try:
+                                chan_id = int(agent.discord_channel_id)
+                                discord_timeline = await discord_manager.fetch_timeline_context(agent.id, chan_id)
+                            except:
+                                pass
+                        
+                        discord_ctx = f"DISCORD TIMELINE CONTEXT:\n{discord_timeline}\n\n" if discord_timeline else ""
+                        
                         static_p, dynamic_p = build_system_prompt(
                             agent.name, current, mems, exs, jp, house.get_prompt_context(), user_timezone=tz
                         )
-                        secret = f"[SYSTEM]: Take the initiative to start a conversation because {reason}"
-                        hidden = f"[AI INTERNAL SYSTEM]:\n{dynamic_p}\n\n{secret}"
+                        secret = f"[SYSTEM]: Take the initiative to start a conversation because {reason}. You can also choose to post to the discord timeline or DM the user based on the context."
+                        hidden = f"[AI INTERNAL SYSTEM]:\n{discord_ctx}{dynamic_p}\n\n{secret}"
 
                         ai_response = ""
                         sf = StreamingTagFilter()
@@ -702,6 +747,15 @@ async def autonomous_loop():
                         ai_response = re.sub(
                             rf"^(?:AI|{re.escape(agent.name)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
                         ).strip()
+                        
+                        # Decide if we should post to Discord based on a simple heuristic or prompt instructions.
+                        # For genuine autonomy, if she talks about the timeline, she posts it.
+                        if agent.discord_connected and agent.discord_channel_id:
+                            try:
+                                await discord_manager.send_channel_message(agent.id, int(agent.discord_channel_id), ai_response)
+                            except Exception as e:
+                                logger.error(f"Failed to post to discord: {e}")
+
                         await broadcast_to_user(agent.id, {"type": "ai_end", "response": ai_response, "source": "autonomous"})
                         save_chat_message(db, agent.id, "ai", ai_response)
                         if agent.id in active_wa_handlers and active_wa_handlers[agent.id].is_connected:

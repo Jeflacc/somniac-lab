@@ -8,11 +8,11 @@ import { AgentAvatar, EvelynEye } from '../components/ui/LabComponents'
 import StatePanel from '../components/ui/StatePanel'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingBag, Newspaper } from 'lucide-react'
+import { ShoppingBag, Newspaper, Hash } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-interface Agent { id: number; name: string; persona: string; mood: string; profile_picture?: string | null; banner_picture?: string | null; model_provider?: string }
+interface Agent { id: number; name: string; persona: string; mood: string; profile_picture?: string | null; banner_picture?: string | null; model_provider?: string; discord_connected?: boolean }
 
 function formatTime(ts: number) {
   const d = new Date(ts)
@@ -119,6 +119,10 @@ export default function DashboardPage() {
   const [newsPosts, setNewsPosts] = useState<any[]>([])
   const [timezone, setTimezone] = useState('Asia/Jakarta')
   const [savingSettings, setSavingSettings] = useState(false)
+  
+  const [discordToken, setDiscordToken] = useState('')
+  const [discordChannelId, setDiscordChannelId] = useState('')
+  const [discordConnecting, setDiscordConnecting] = useState(false)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -184,6 +188,45 @@ export default function DashboardPage() {
     try {
       await fetch(`${API_URL}/api/user/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ timezone }) })
     } catch {} finally { setSavingSettings(false) }
+  }
+
+  const handleDiscordConnect = async () => {
+    if (!selectedAgent) return
+    setDiscordConnecting(true)
+    try {
+        const res = await fetch(`${API_URL}/api/agents/${selectedAgent.id}/discord/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ token: discordToken, channel_id: discordChannelId })
+        })
+        if (res.ok) {
+            await fetchAgents()
+            setDiscordToken('')
+            setDiscordChannelId('')
+        }
+    } catch (e) {
+        console.error(e)
+    } finally {
+        setDiscordConnecting(false)
+    }
+  }
+
+  const handleDiscordDisconnect = async () => {
+    if (!selectedAgent) return
+    setDiscordConnecting(true)
+    try {
+        const res = await fetch(`${API_URL}/api/agents/${selectedAgent.id}/discord/disconnect`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+            await fetchAgents()
+        }
+    } catch (e) {
+        console.error(e)
+    } finally {
+        setDiscordConnecting(false)
+    }
   }
 
   const buyItem = async (item: any) => {
@@ -552,6 +595,41 @@ export default function DashboardPage() {
                        <p style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)' }}>Open WhatsApp {'>'} Linked Devices {'>'} Link a Device</p>
                        <div style={{ background: 'white', padding: 16, borderRadius: 12, display: 'inline-block' }}><QRCodeSVG value={qrString} size={200} /></div>
                      </div>}
+                </div>
+              )}
+            </div>
+
+            {/* Discord */}
+            <div style={{ background: 'var(--bg-card)', padding: 32, borderRadius: 16, border: '1px solid var(--border)', marginBottom: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Hash size={20} style={{ color: '#5865F2' }} /> Discord Autonomy Sync
+              </h3>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.6 }}>
+                Give this agent a Discord bot token to allow them to autonomously read a timeline channel and post / DM you. Token is encrypted in the database.
+              </p>
+              
+              {selectedAgent.discord_connected ? (
+                <div className="telegram-anim" style={{ marginTop: 24, padding: 24, background: 'var(--bg-primary)', borderRadius: 16, border: '1px solid var(--border)', display: 'inline-block' }}>
+                   <div style={{ padding: 10, color: 'var(--green)', fontWeight: 600, marginBottom: 12 }}>🟢 Discord Connected Successfully!</div>
+                   <button onClick={handleDiscordDisconnect} disabled={discordConnecting} className="btn-press" style={{ background: 'var(--bg-panel)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '10px 24px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
+                     {discordConnecting ? 'Disconnecting...' : 'Disconnect Bot'}
+                   </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 360 }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>BOT TOKEN</label>
+                    <input type="password" value={discordToken} onChange={e => setDiscordToken(e.target.value)} placeholder="Paste bot token here..."
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>TIMELINE CHANNEL ID</label>
+                    <input type="text" value={discordChannelId} onChange={e => setDiscordChannelId(e.target.value)} placeholder="e.g. 1234567890"
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }} />
+                  </div>
+                  <button onClick={handleDiscordConnect} disabled={discordConnecting || !discordToken || !discordChannelId} className="btn-press" style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '12px 24px', borderRadius: 8, fontWeight: 600, cursor: (discordConnecting || !discordToken || !discordChannelId) ? 'default' : 'pointer', opacity: (discordConnecting || !discordToken || !discordChannelId) ? 0.5 : 1 }}>
+                    {discordConnecting ? 'Connecting...' : 'Connect Discord'}
+                  </button>
                 </div>
               )}
             </div>

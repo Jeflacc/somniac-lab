@@ -46,6 +46,11 @@ class AIAgent(Base):
     profile_picture = Column(String, nullable=True)  # base64 data URL
     banner_picture = Column(String, nullable=True)   # base64 data URL
     
+    # Discord Multi-Tenant Fields
+    discord_token = Column(String, default="")       # encrypted
+    discord_channel_id = Column(String, default="")
+    discord_connected = Column(Boolean, default=False)
+    
     owner = relationship("User", back_populates="ai_agents")
     economy = relationship("Economy", back_populates="agent", uselist=False)
     house_state = relationship("HouseState", back_populates="agent", uselist=False)
