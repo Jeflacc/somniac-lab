@@ -219,6 +219,27 @@ export default function DashboardPage() {
     } catch {} finally { setSavingSettings(false) }
   }
 
+  // Poll /discord/info until bot is logged in (max ~20s)
+  const pollDiscordBotInfo = useCallback((agentId: number) => {
+    let attempts = 0
+    const maxAttempts = 10
+    const interval = setInterval(async () => {
+      attempts++
+      try {
+        const r = await fetch(`${API_URL}/api/agents/${agentId}/discord/info`, { headers: { Authorization: `Bearer ${token}` } })
+        if (r.ok) {
+          const info = await r.json()
+          if (info?.name) {
+            setDiscordBotInfo(info)
+            clearInterval(interval)
+            return
+          }
+        }
+      } catch {}
+      if (attempts >= maxAttempts) clearInterval(interval)
+    }, 2000)
+  }, [token])
+
   const handleDiscordConnect = async () => {
     if (!selectedAgent) return
     setDiscordConnecting(true)
@@ -232,13 +253,8 @@ export default function DashboardPage() {
             await fetchAgents()
             setDiscordToken('')
             setDiscordChannelId('')
-            // Poll for bot info — bot needs a moment to log in
-            setTimeout(async () => {
-              try {
-                const infoRes = await fetch(`${API_URL}/api/agents/${selectedAgent.id}/discord/info`, { headers: { Authorization: `Bearer ${token}` } })
-                if (infoRes.ok) { const info = await infoRes.json(); if (info.name) setDiscordBotInfo(info) }
-              } catch {}
-            }, 3000)
+            // Poll until bot is logged in (Discord login takes a few seconds)
+            pollDiscordBotInfo(selectedAgent.id)
         }
     } catch (e) {
         console.error(e)
@@ -269,10 +285,8 @@ export default function DashboardPage() {
   // Fetch bot info when switching to settings tab with a connected agent
   useEffect(() => {
     if (tab === 'settings' && selectedAgent?.discord_connected) {
-      fetch(`${API_URL}/api/agents/${selectedAgent.id}/discord/info`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.ok ? r.json() : null)
-        .then(info => { if (info?.name) setDiscordBotInfo(info) })
-        .catch(() => {})
+      // Try immediately, then keep retrying in case bot is still logging in
+      pollDiscordBotInfo(selectedAgent.id)
     }
   }, [tab, selectedAgent?.id, selectedAgent?.discord_connected])
 

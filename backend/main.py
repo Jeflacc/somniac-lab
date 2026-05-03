@@ -186,7 +186,6 @@ async def discord_message_handler(agent_id: int, channel_id: int, author_name: s
         ai_response = re.sub(rf"^(?:AI|{re.escape(agent.name)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE).strip()
         if ai_response:
             await discord_manager.send_channel_message(agent_id, channel_id, ai_response)
-            save_chat_message(db, agent_id, "ai", f"[Discord] {ai_response}")
             logger.info(f"[DISCORD] Agent {agent_id} replied to {author_name}: {ai_response[:80]}")
     except Exception as e:
         logger.error(f"[DISCORD MSG HANDLER] {e}")
