@@ -242,7 +242,6 @@ async def process_wa_queue():
                 house = HouseManager(agent_id, db)
                 house.enqueue_wa(text, message)
                 logger.info(f"[WA QUEUE] Agent {agent_id}: '{text[:50]}' → queued to check_wa chore")
-                await broadcast_to_user(agent_id, {"type": "system", "text": f"[WhatsApp Incoming]: {text[:80]}"})
             except Exception as e:
                 logger.error(f"[WA QUEUE] Error: {e}")
             finally:
@@ -933,11 +932,11 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
         async for chunk in llm.generate_response_stream(static_p, user_prompt=hidden, chat_history=chat_history):
             safe = sf.feed(chunk)
             ai_response += chunk
-            if safe:
+            if safe and source == "web":
                 await broadcast_to_user(agent_id, {"type": "ai_chunk", "chunk": safe})
 
         leftover = sf.flush()
-        if leftover:
+        if leftover and source == "web":
             await broadcast_to_user(agent_id, {"type": "ai_chunk", "chunk": leftover})
 
         for entry in parse_ingat_tags(ai_response):
@@ -954,7 +953,8 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
             rf"^(?:AI|{re.escape(agent.name)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
         ).strip()
 
-        await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})
+        if source == "web":
+            await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})
         save_chat_message(db, agent_id, "ai", ai_response)
         if source == "whatsapp" and agent.id in active_wa_handlers and active_wa_handlers[agent_id].is_connected:
             active_wa_handlers[agent_id].send_natural_burst(ai_response)
