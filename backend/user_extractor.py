@@ -90,7 +90,7 @@ def strip_ingat_tags(ai_response: str) -> str:
 # LOG tag parser: [LOG: diary entry] or [CATAT: ...]
 # ─────────────────────────────────────────────────────────────
 CATAT_TAG_PATTERN = re.compile(
-    r"\[(?:CATAT|LOG|NOTE)(?:\(([a-zA-Z]+)\))?:\s*([^\]]*?)\]",
+    r"\[(?:CATAT|LOG|NOTE)(?:\(([a-zA-Z]+)\))?[:\s]*([^\]]*?)\]",
     re.IGNORECASE
 )
 

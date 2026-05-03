@@ -149,6 +149,7 @@ from user_extractor import (
     strip_all_system_tags,
 )
 from whatsapp_handler import WhatsAppHandler
+import discord_manager
 
 import uuid
 
@@ -230,6 +231,25 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(house_tick_loop())
     asyncio.create_task(state_broadcast_loop())
     asyncio.create_task(process_wa_queue())
+
+    # Resume Discord Bots
+    async def resume_discord_bots():
+        db = SessionLocal()
+        try:
+            connected_agents = db.query(models.AIAgent).filter(models.AIAgent.discord_connected == True).all()
+            for agent in connected_agents:
+                if agent.discord_token:
+                    try:
+                        token = discord_manager.decrypt_token(agent.discord_token)
+                        if token:
+                            await discord_manager.start_discord_bot(agent.id, token)
+                            logger.info(f"[DISCORD] Resumed bot for Agent {agent.id}")
+                    except Exception as e:
+                        logger.error(f"[DISCORD] Failed to resume bot for Agent {agent.id}: {e}")
+        finally:
+            db.close()
+            
+    asyncio.create_task(resume_discord_bots())
 
     logger.info(f"✅ Engine ready!")
     yield
