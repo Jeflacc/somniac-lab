@@ -349,7 +349,12 @@ async def create_agent(req: CreateAgentRequest, current_user: models.User = Depe
 @app.get("/api/agents")
 async def list_agents(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     agents = db.query(models.AIAgent).filter(models.AIAgent.owner_id == current_user.id).all()
-    return [{"id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood, "profile_picture": a.profile_picture, "banner_picture": a.banner_picture} for a in agents]
+    return [{
+        "id": a.id, "name": a.name, "persona": a.base_persona, "mood": a.mood,
+        "profile_picture": a.profile_picture, "banner_picture": a.banner_picture,
+        "discord_connected": a.discord_connected, "discord_channel_id": a.discord_channel_id,
+        "whatsapp_connected": a.whatsapp_connected, "whatsapp_number": a.whatsapp_number
+    } for a in agents]
 
 @app.delete("/api/agents/{agent_id}")
 async def delete_agent(agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
