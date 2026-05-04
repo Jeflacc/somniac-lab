@@ -7,9 +7,8 @@ import sys
 import asyncio
 import logging
 import random
-import time
 import re
-from urllib.parse import quote
+import time
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -1027,30 +1026,18 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
         ).strip()
 
         # Handle stickers for WhatsApp
-        stickers = re.findall(r"\[STICKER:(.*?)\]", ai_response, flags=re.DOTALL)
-        ai_response = re.sub(r"\[STICKER:.*?\]", "", ai_response, flags=re.DOTALL).strip()
-
-        # Handle images (Pollinations)
-        image_prompts = re.findall(r"\[IMAGE:(.*?)\]", ai_response, flags=re.DOTALL)
-        ai_response = re.sub(r"\[IMAGE:.*?\]", "", ai_response, flags=re.DOTALL).strip()
+        stickers = re.findall(r"\[STICKER:(.*?)\]", ai_response)
+        ai_response = re.sub(r"\[STICKER:.*?\]", "", ai_response).strip()
 
         if source == "web":
             await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})
-            for p in image_prompts:
-                img_url = f"https://image.pollinations.ai/prompt/{quote(p.strip())}"
-                await broadcast_to_user(agent_id, {"type": "ai_image", "url": img_url})
-
         save_chat_message(db, agent_id, "ai", ai_response)
         
         if source == "whatsapp" and agent.id in active_wa_handlers and active_wa_handlers[agent_id].is_connected:
             active_wa_handlers[agent_id].send_natural_burst(ai_response)
-            # Send stickers if any
+            # Send stickers if any were generated
             for s in stickers:
                 active_wa_handlers[agent_id].send_sticker_to_master(s.strip())
-            # Send images if any
-            for p in image_prompts:
-                img_url = f"https://image.pollinations.ai/prompt/{quote(p.strip())}"
-                active_wa_handlers[agent_id].send_image_to_master(img_url, caption=f"Generated: {p.strip()}")
 
         chat_history.append({"role": "user", "content": user_input})
         chat_history.append({"role": "assistant", "content": ai_response})

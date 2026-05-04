@@ -107,25 +107,6 @@ class WhatsAppHandler:
         except Exception as e:
             print(f"\n[WhatsApp User {self.user_id}] Failed to send message: {e}")
 
-    def send_image_to_master(self, url: str, caption: str = ""):
-        if not self.is_connected:
-            return
-        try:
-            # Neonize send_image usually takes a local path or bytes. 
-            # We will download it briefly to a temp file.
-            import requests
-            import tempfile
-            r = requests.get(url, timeout=15)
-            if r.status_code == 200:
-                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-                    tmp.write(r.content)
-                    tmp_path = tmp.name
-                self.client.send_image(self.master_jid, tmp_path, caption=caption)
-                os.remove(tmp_path)
-                print(f"[WhatsApp User {self.user_id}] Image sent from URL: {url}")
-        except Exception as e:
-            print(f"[WhatsApp User {self.user_id}] Failed to send image from URL: {e}")
-
     def send_sticker_to_master(self, filename: str):
         if not self.is_connected:
             return

@@ -22,7 +22,6 @@ export type Message = {
   role:   'user' | 'ai' | 'system'
   text:   string
   ts:     number
-  image?: string
 }
 
 export type HouseState = {
@@ -112,9 +111,6 @@ export function useAIConnection(agentId: string | undefined) {
             }
             streamRef.current = ''
             setStreamBuffer('')
-            break
-          case 'ai_image':
-            addMessage({ role: 'ai', text: '', image: data.url })
             break
           case 'command_result':
             addMessage({ role: 'system', text: data.msg || JSON.stringify(data) })
