@@ -7,8 +7,9 @@ import sys
 import asyncio
 import logging
 import random
-import re
 import time
+import re
+from urllib.parse import quote
 from contextlib import asynccontextmanager
 from typing import Optional
 
