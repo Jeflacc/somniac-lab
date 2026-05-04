@@ -12,7 +12,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -558,8 +558,20 @@ class FeedGiveRequest(BaseModel):
     name: str
     emoji: str
 
+async def run_system_chat(agent_id: int, user_id: int, message: str):
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user: return
+        req = ChatRequest(message=message)
+        await chat_endpoint(req, agent_id, user, db, source="web")
+    except Exception as e:
+        logger.error(f"Error in system chat trigger: {e}")
+    finally:
+        db.close()
+
 @app.post("/api/agents/{agent_id}/feed")
-async def feed_agent(agent_id: int, req: FeedGiveRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def feed_agent(agent_id: int, req: FeedGiveRequest, background_tasks: BackgroundTasks, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
     if not agent: raise HTTPException(404, "Agent not found")
     
@@ -580,10 +592,15 @@ async def feed_agent(agent_id: int, req: FeedGiveRequest, current_user: models.U
     if not house.current_chore_id or house.current_chore_id != "eat":
         house.enqueue_chore("eat", priority=True)
     await broadcast_to_user(agent_id, {"type": "inventory_state", **state.get_inventory_state()})
+    
+    # Trigger AI conversational reaction
+    sys_msg = f"*(System Event: The user just gave you a {req.name} {req.emoji} to eat! React to it!)*"
+    background_tasks.add_task(run_system_chat, agent_id, current_user.id, sys_msg)
+    
     return {"ok": True, "msg": f"Gave {req.name} to {agent.name}.", "inventory": inv}
 
 @app.post("/api/agents/{agent_id}/give")
-async def give_agent(agent_id: int, req: FeedGiveRequest, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def give_agent(agent_id: int, req: FeedGiveRequest, background_tasks: BackgroundTasks, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     agent = db.query(models.AIAgent).filter(models.AIAgent.id == agent_id, models.AIAgent.owner_id == current_user.id).first()
     if not agent: raise HTTPException(404, "Agent not found")
     
@@ -600,6 +617,11 @@ async def give_agent(agent_id: int, req: FeedGiveRequest, current_user: models.U
     
     journal = JournalManager(agent_id, db)
     journal.add_entry(f"Received a {req.name} from {current_user.username}. So sweet!", "event")
+    
+    # Trigger AI conversational reaction
+    sys_msg = f"*(System Event: The user just gave you a {req.name} {req.emoji} as a gift! React to it!)*"
+    background_tasks.add_task(run_system_chat, agent_id, current_user.id, sys_msg)
+    
     return {"ok": True, "msg": f"Gave {req.name} to {agent.name}.", "inventory": inv}
 
 @app.get("/health")
