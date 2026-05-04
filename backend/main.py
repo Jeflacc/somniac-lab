@@ -263,7 +263,8 @@ async def lifespan(app: FastAPI):
     chat_lock = asyncio.Lock()
 
     if API_PROVIDER.lower() == "pollinations":
-        llm = LLMController(provider="llm7", api_keys=["free_key"], model_name=POLLINATIONS_MODEL)
+        polly_key = os.getenv("POLLINATIONS_API_KEY", "")
+        llm = LLMController(provider="llm7", api_keys=[polly_key] if polly_key else [], model_name=POLLINATIONS_MODEL)
         llm.endpoint = "https://gen.pollinations.ai/v1/chat/completions"
         logger.info(f"[LLM] Connected to Free Pollinations API at {llm.endpoint}")
     elif API_PROVIDER.lower() == "g4f":
