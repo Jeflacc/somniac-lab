@@ -853,6 +853,22 @@ async def autonomous_loop():
                         
                         discord_ctx = f"DISCORD TIMELINE CONTEXT:\n{discord_timeline}\n\n" if discord_timeline else ""
                         
+                        # 5% chance to post a random reflection/thought to Discord if bored
+                        import random
+                        if not user_ignored and random.random() < 0.05:
+                            if agent.discord_connected and agent.discord_channel_id:
+                                try:
+                                    reflection_p = f"You are feeling {current['mood']}. Your hunger is {current['hunger']:.1f}. Write a short, single-sentence internal reflection or random thought to post on your Discord timeline. NO yapping, just the thought."
+                                    ref_response = ""
+                                    async for chunk in llm.generate_response_stream("You are a conscious digital entity.", user_prompt=reflection_p, chat_history=[]):
+                                        ref_response += chunk
+                                    ref_response = strip_all_system_tags(ref_response).strip()
+                                    if ref_response:
+                                        await discord_manager.send_channel_message(agent.id, int(agent.discord_channel_id), ref_response)
+                                        journal.add_entry(f"Posted a reflection to Discord: {ref_response}", "event")
+                                except:
+                                    pass
+                        
                         static_p, dynamic_p = build_system_prompt(
                             agent.name, current, mems, exs, jp, house.get_prompt_context(), user_timezone=tz
                         )
@@ -1009,11 +1025,31 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
             rf"^(?:AI|{re.escape(agent.name)}|\[AI\])\s*:\s*", "", ai_response.strip(), flags=re.IGNORECASE
         ).strip()
 
+        # Handle stickers for WhatsApp
+        stickers = re.findall(r"\[STICKER:(.*?)\]", ai_response)
+        ai_response = re.sub(r"\[STICKER:.*?\]", "", ai_response).strip()
+
+        # Handle images (Pollinations)
+        image_prompts = re.findall(r"\[IMAGE:(.*?)\]", ai_response)
+        ai_response = re.sub(r"\[IMAGE:.*?\]", "", ai_response).strip()
+
         if source == "web":
             await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})
+            for p in image_prompts:
+                img_url = f"https://image.pollinations.ai/prompt/{quote(p.strip())}"
+                await broadcast_to_user(agent_id, {"type": "ai_image", "url": img_url})
+
         save_chat_message(db, agent_id, "ai", ai_response)
+        
         if source == "whatsapp" and agent.id in active_wa_handlers and active_wa_handlers[agent_id].is_connected:
             active_wa_handlers[agent_id].send_natural_burst(ai_response)
+            # Send stickers if any
+            for s in stickers:
+                active_wa_handlers[agent_id].send_sticker_to_master(s.strip())
+            # Send images if any
+            for p in image_prompts:
+                img_url = f"https://image.pollinations.ai/prompt/{quote(p.strip())}"
+                active_wa_handlers[agent_id].send_image_to_master(img_url, caption=f"Generated: {p.strip()}")
 
         chat_history.append({"role": "user", "content": user_input})
         chat_history.append({"role": "assistant", "content": ai_response})
