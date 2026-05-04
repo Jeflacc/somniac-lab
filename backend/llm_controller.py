@@ -108,8 +108,8 @@ class LLMController:
         if self.provider == "llm7":
             payload["max_tokens"] = 4000  # Increased for larger context window
 
-        # For LLM7: retry with next key on 429, max len(key_pool) attempts
-        max_attempts = len(self._key_pool) if self.provider == "llm7" else 1
+        # Allow up to 3 attempts for server glitches
+        max_attempts = max(3, len(self._key_pool))
         for attempt in range(max_attempts):
             result = await self._try_request(payload)
             if result == "RATE_LIMIT_DAILY":
@@ -119,6 +119,15 @@ class LLMController:
                     return
                 # Retry loop with new key
                 continue
+            elif result == "SERVER_ERROR_RETRY":
+                import asyncio
+                if attempt < max_attempts - 1:
+                    logging.warning(f"[LLM] 502/503 Server error, retrying in 2s... (Attempt {attempt+1}/{max_attempts})")
+                    await asyncio.sleep(2)
+                    continue
+                else:
+                    yield "*ugh* ... (My brain is glitching right now, the network is overloaded. Give me a minute...)"
+                    return
             else:
                 # Yield all content from result generator
                 async for chunk in result:
@@ -160,7 +169,11 @@ class LLMController:
 
             if resp.status != 200:
                 err_text = await resp.text()
-                logging.error(f"{self.provider.capitalize()} API Error {resp.status}: {err_text}")
+                logging.error(f"{self.provider.capitalize()} API Error {resp.status}: {err_text[:100]}")
+                
+                if resp.status in [500, 502, 503, 504] or "<!doctype html>" in err_text[:50].lower():
+                    return "SERVER_ERROR_RETRY"
+                    
                 return self._error_gen(f"Error {self.provider.capitalize()} [{resp.status}]: {err_text[:80]}")
 
             return self._stream_response(resp)
