@@ -114,7 +114,8 @@ except Exception as e:
     print(f"[MIGRATE] Migration check skipped: {e}")
 
 
-API_PROVIDER  = os.getenv("API_PROVIDER", "ollamafree")
+API_PROVIDER  = os.getenv("API_PROVIDER", "g4f")
+G4F_MODEL = os.getenv("G4F_MODEL", "gpt-4o")
 OLLAMAFREE_MODEL = os.getenv("OLLAMAFREE_MODEL", "llama3.2:3b")
 OLLAMA_HOST   = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 OLLAMA_MODEL  = os.getenv("OLLAMA_MODEL", "llama3")
@@ -260,7 +261,11 @@ async def lifespan(app: FastAPI):
     memory  = MemoryManager()
     chat_lock = asyncio.Lock()
 
-    if API_PROVIDER.lower() == "ollamafree":
+    if API_PROVIDER.lower() == "g4f":
+        llm = LLMController(provider="llm7", api_keys=["g4f_dummy_key"], model_name=G4F_MODEL)
+        llm.endpoint = "http://127.0.0.1:1337/v1/chat/completions"
+        logger.info(f"[LLM] Connected to local G4F API server at {llm.endpoint}")
+    elif API_PROVIDER.lower() == "ollamafree":
         try:
             from ollamafreeapi import OllamaFreeAPI
             free_api = OllamaFreeAPI()
