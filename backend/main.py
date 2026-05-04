@@ -114,7 +114,8 @@ except Exception as e:
     print(f"[MIGRATE] Migration check skipped: {e}")
 
 
-API_PROVIDER  = os.getenv("API_PROVIDER", "llm7")
+API_PROVIDER  = os.getenv("API_PROVIDER", "ollamafree")
+OLLAMAFREE_MODEL = os.getenv("OLLAMAFREE_MODEL", "llama3.2:3b")
 OLLAMA_HOST   = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 OLLAMA_MODEL  = os.getenv("OLLAMA_MODEL", "llama3")
 LLM7_API_KEY  = os.getenv("LLM7_API_KEY", "nMjx1W5KkD/F2AGaQk4ej1dFi55ug7alOCJxufXh+f6PB9WHRNry9npoZ2ceGlnIfONNLr5uNaLXFfNaXxl4x/UeSDP/1m3bKlBzDrEJ1WwEBSaJ9+A7ALNOdkY9XqBBL5mXfEI=")
@@ -259,8 +260,21 @@ async def lifespan(app: FastAPI):
     memory  = MemoryManager()
     chat_lock = asyncio.Lock()
 
-    llm7_keys = [k for k in [LLM7_API_KEY, LLM7_API_KEY_2] if k]
-    llm = LLMController(provider="llm7", api_keys=llm7_keys, model_name=LLM7_MODEL)
+    if API_PROVIDER.lower() == "ollamafree":
+        try:
+            from ollamafreeapi import OllamaFreeAPI
+            free_api = OllamaFreeAPI()
+            params = free_api.get_llm_params(model=OLLAMAFREE_MODEL)
+            llm = LLMController(provider="ollama", model_name=params["model"], host=params["base_url"])
+            logger.info(f"[LLM] Connected to Free Ollama Node: {params['base_url']} (Model: {params['model']})")
+        except Exception as e:
+            logger.error(f"[LLM] OllamaFreeAPI Failed: {e}")
+            llm = None
+    elif API_PROVIDER.lower() == "llm7":
+        llm7_keys = [k for k in [LLM7_API_KEY, LLM7_API_KEY_2] if k]
+        llm = LLMController(provider="llm7", api_keys=llm7_keys, model_name=LLM7_MODEL)
+    else:
+        llm = LLMController(provider="ollama", model_name=OLLAMA_MODEL, host=OLLAMA_HOST)
 
     await asyncio.to_thread(memory.init_examples)
 
