@@ -1027,12 +1027,12 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
         ).strip()
 
         # Handle stickers for WhatsApp
-        stickers = re.findall(r"\[STICKER:(.*?)\]", ai_response)
-        ai_response = re.sub(r"\[STICKER:.*?\]", "", ai_response).strip()
+        stickers = re.findall(r"\[STICKER:(.*?)\]", ai_response, flags=re.DOTALL)
+        ai_response = re.sub(r"\[STICKER:.*?\]", "", ai_response, flags=re.DOTALL).strip()
 
         # Handle images (Pollinations)
-        image_prompts = re.findall(r"\[IMAGE:(.*?)\]", ai_response)
-        ai_response = re.sub(r"\[IMAGE:.*?\]", "", ai_response).strip()
+        image_prompts = re.findall(r"\[IMAGE:(.*?)\]", ai_response, flags=re.DOTALL)
+        ai_response = re.sub(r"\[IMAGE:.*?\]", "", ai_response, flags=re.DOTALL).strip()
 
         if source == "web":
             await broadcast_to_user(agent_id, {"type": "ai_end", "response": ai_response, "source": source})

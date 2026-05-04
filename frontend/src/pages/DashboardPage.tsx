@@ -46,6 +46,12 @@ function ChatMessageInline({ msg, agentName, agentPic, agentDecoration }: { msg:
         </div>
         <p style={{ fontSize: 15, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.text}</p>
         
+        {msg.image && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ marginTop: 12, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-panel)', maxWidth: 400 }}>
+            <img src={msg.image} style={{ width: '100%', height: 'auto', display: 'block' }} alt="AI Generated" />
+          </motion.div>
+        )}
+        
         {/* Simple floating emoji logic if message contains emoji */}
         {!isUser && msg.text && [...msg.text].find(c => c.length > 1 || c.match(/\p{Emoji}/u)) && (
            <motion.div initial={{ scale: 0, opacity: 0, y: 0 }} animate={{ scale: [0, 1.5, 1], opacity: [0, 1, 0], y: -50 }} transition={{ duration: 1.5, ease: "easeOut" }} style={{ position: 'absolute', top: 0, right: 20, fontSize: 32, pointerEvents: 'none' }}>
