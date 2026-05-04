@@ -815,10 +815,10 @@ async def autonomous_loop():
                     async with chat_lock:
                         await broadcast_to_user(agent.id, {"type": "ai_thinking", "indicator": "Thinking of something..."})
                         mems, exs = await asyncio.gather(
-                            asyncio.to_thread(memory.search_memory, agent.id, agent.name, 10),
+                            asyncio.to_thread(memory.search_memory, agent.id, agent.name, 3),
                             asyncio.to_thread(memory.search_examples, current["mood"])
                         )
-                        jp = await asyncio.to_thread(journal.build_journal_prompt)
+                        jp = await asyncio.to_thread(journal.build_journal_prompt, days=1, max_entries_today=3, max_entries_past=0)
 
                         owner = db.query(models.User).filter(models.User.id == agent.owner_id).first()
                         tz = owner.timezone if owner else "Asia/Jakarta"
@@ -937,9 +937,9 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
         current = state.get_state_summary()
 
         mems, exs, jp = await asyncio.gather(
-            asyncio.to_thread(memory.search_memory, agent_id, user_input, 10),
+            asyncio.to_thread(memory.search_memory, agent_id, user_input, 3),
             asyncio.to_thread(memory.search_examples, user_input + " " + current.get("mood", "")),
-            asyncio.to_thread(journal.build_journal_prompt),
+            asyncio.to_thread(journal.build_journal_prompt, days=1, max_entries_today=5, max_entries_past=2),
         )
 
         econ = economy.get_summary()
@@ -997,7 +997,9 @@ async def chat_endpoint(req: ChatRequest, agent_id: int, current_user: models.Us
 
         chat_history.append({"role": "user", "content": user_input})
         chat_history.append({"role": "assistant", "content": ai_response})
-        while sum(len(m["content"]) for m in chat_history) // 4 > 12000 and len(chat_history) > 2:
+        
+        # Optimize chat history context: keep max ~2000 tokens OR max 20 messages
+        while (sum(len(m["content"]) for m in chat_history) // 4 > 2000 or len(chat_history) > 20) and len(chat_history) > 2:
             chat_history.pop(0)
             chat_history.pop(0)
             
