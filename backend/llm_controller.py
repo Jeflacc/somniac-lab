@@ -106,7 +106,7 @@ class LLMController:
             payload["keep_alive"] = "1h"
 
         if self.provider == "llm7":
-            payload["max_tokens"] = 900  # Sedikit lebih hemat — 900 token output per request
+            payload["max_tokens"] = 4000  # Increased for larger context window
 
         # For LLM7: retry with next key on 429, max len(key_pool) attempts
         max_attempts = len(self._key_pool) if self.provider == "llm7" else 1
