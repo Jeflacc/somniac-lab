@@ -9,8 +9,8 @@ fi
 # Activate venv
 source venv/bin/activate
 
-# Ensure g4f is installed
-pip install -U g4f curl_cffi browser_cookie3
+# Ensure g4f and all API server dependencies are installed
+pip install -U g4f curl_cffi browser_cookie3 a2wsgi uvicorn fastapi
 
 # Start G4F API
 python3 -m g4f.cli api
