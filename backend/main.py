@@ -264,7 +264,8 @@ async def lifespan(app: FastAPI):
 
     if API_PROVIDER.lower() == "pollinations":
         llm = LLMController(provider="llm7", api_keys=["free_key"], model_name=POLLINATIONS_MODEL)
-        llm.endpoint = "https://text.pollinations.ai/openai/chat/completions"
+        llm.endpoint = "https://text.pollinations.ai/openai/chat/completions" # Fallback to text if gen is broken
+        llm.endpoint = "https://gen.pollinations.ai/openai/chat/completions"
         logger.info(f"[LLM] Connected to Free Pollinations API at {llm.endpoint}")
     elif API_PROVIDER.lower() == "g4f":
         llm = LLMController(provider="llm7", api_keys=["g4f_dummy_key"], model_name=G4F_MODEL)
