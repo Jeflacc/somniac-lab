@@ -2,12 +2,13 @@ import { StatBar, barColor, MoodBadge, SectionTitle, QuickBtn, AgentAvatar } fro
 import { Moon, Sun, Utensils } from 'lucide-react'
 import type { AIState } from '../../hooks/useAIConnection'
 
-export default function StatePanel({ aiState, houseState, economy, agentName, agentPic, agentDecoration, sendCommand }: {
+export default function StatePanel({ aiState, houseState, economy, agentName, agentPic, agentBanner, agentDecoration, sendCommand }: {
   aiState: AIState | null
   houseState: any
   economy: any
   agentName: string
   agentPic?: string | null
+  agentBanner?: string | null
   agentDecoration?: string | null
   sendCommand: (cmd: string, payload?: string) => void
 }) {
@@ -29,20 +30,29 @@ export default function StatePanel({ aiState, houseState, economy, agentName, ag
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 20, overflow: 'auto', flex: 1 }}>
       {/* Agent header */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <AgentAvatar src={agentPic} name={agentName} decoration={agentDecoration} size={44} />
+      {/* Agent header with banner background */}
+      <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 4, flexShrink: 0 }}>
+        {/* Banner Background */}
+        <div style={{ 
+          position: 'absolute', inset: 0, 
+          background: agentBanner ? `url(${agentBanner}) center/cover` : 'linear-gradient(135deg, #5865f2, #eb459e)',
+          opacity: 0.85,
+          zIndex: 0 
+        }} />
+        {/* Gradient overlay for text readability */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, var(--bg-card) 20%, transparent)', zIndex: 0 }} />
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', position: 'relative', zIndex: 1 }}>
+          <AgentAvatar src={agentPic} name={agentName} decoration={agentDecoration} size={48} />
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{agentName}</div>
-            <MoodBadge mood={aiState.mood} />
+            <div style={{ fontWeight: 800, fontSize: 16, textShadow: '0 2px 4px rgba(0,0,0,0.4)', color: 'white', marginBottom: 4 }}>{agentName}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+               <MoodBadge mood={aiState.mood} />
+               <span style={{ color: '#f87171', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: 12, backdropFilter: 'blur(4px)', fontWeight: 700 }}>
+                 <span style={{ animation: 'pulse-glow 1s infinite' }}>♥</span> {aiState.heart_rate} bpm
+               </span>
+            </div>
           </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: '#f87171', fontSize: 14, animation: 'pulse-glow 1s infinite' }}>♥</span>
-          <span className="mono" style={{ fontSize: 13, color: '#f87171' }}>{aiState.heart_rate} bpm</span>
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-          {aiState.breath_rate} breaths/min
         </div>
       </div>
 

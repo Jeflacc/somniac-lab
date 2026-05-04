@@ -114,12 +114,12 @@ except Exception as e:
     print(f"[MIGRATE] Migration check skipped: {e}")
 
 
-API_PROVIDER  = os.getenv("API_PROVIDER", "groq")
+API_PROVIDER  = os.getenv("API_PROVIDER", "llm7")
 OLLAMA_HOST   = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 OLLAMA_MODEL  = os.getenv("OLLAMA_MODEL", "llama3")
-GROQ_API_KEY  = os.getenv("GROQ_API_KEY", "")
-GROQ_API_KEY_2= os.getenv("GROQ_API_KEY_2", "")
-GROQ_MODEL    = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+LLM7_API_KEY  = os.getenv("LLM7_API_KEY", "nMjx1W5KkD/F2AGaQk4ej1dFi55ug7alOCJxufXh+f6PB9WHRNry9npoZ2ceGlnIfONNLr5uNaLXFfNaXxl4x/UeSDP/1m3bKlBzDrEJ1WwEBSaJ9+A7ALNOdkY9XqBBL5mXfEI=")
+LLM7_API_KEY_2= os.getenv("LLM7_API_KEY_2", "")
+LLM7_MODEL    = os.getenv("LLM7_MODEL", "default")
 AI_NAME       = os.getenv("AI_NAME", "Evelyn")
 FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
@@ -259,12 +259,8 @@ async def lifespan(app: FastAPI):
     memory  = MemoryManager()
     chat_lock = asyncio.Lock()
 
-    groq_keys = [k for k in [GROQ_API_KEY, GROQ_API_KEY_2] if k]
-
-    if API_PROVIDER.lower() == "groq":
-        llm = LLMController(provider="groq", api_keys=groq_keys, model_name=GROQ_MODEL)
-    else:
-        llm = LLMController(provider="ollama", model_name=OLLAMA_MODEL, host=OLLAMA_HOST)
+    llm7_keys = [k for k in [LLM7_API_KEY, LLM7_API_KEY_2] if k]
+    llm = LLMController(provider="llm7", api_keys=llm7_keys, model_name=LLM7_MODEL)
 
     await asyncio.to_thread(memory.init_examples)
 

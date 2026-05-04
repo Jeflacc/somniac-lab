@@ -320,6 +320,38 @@ export default function DashboardPage() {
     input.onchange = async (e: any) => {
       const file = e.target.files?.[0]
       if (!file) return
+
+      const nameLower = file.name.toLowerCase()
+      const isAnimated = file.type === 'image/gif' || file.type === 'image/webp' || nameLower.endsWith('.gif') || nameLower.endsWith('.webp')
+      
+      // For decorations OR animated GIFs/WEBPs, preserve raw file data and transparency by avoiding Canvas
+      if (type === 'decoration' || isAnimated) {
+        const reader = new FileReader()
+        reader.onload = async (re) => {
+          const dataUrl = re.target?.result as string
+          if (type === 'user') {
+            const res = await fetch(`${API_URL}/api/profile/picture`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: dataUrl }) })
+            if (!res.ok) alert(`Upload failed (${res.status}). The GIF might be too large! If you are on a VPS, increase 'client_max_body_size 50M;' in your NGINX config.`)
+            else setProfilePicture(dataUrl)
+          } else if (agentIdNum) {
+            const isBanner = type === 'banner'
+            const isDecoration = type === 'decoration'
+            const url = isBanner ? `${API_URL}/api/agents/${agentIdNum}/banner` : 
+                        isDecoration ? `${API_URL}/api/agents/${agentIdNum}/decoration` : 
+                        `${API_URL}/api/agents/${agentIdNum}/picture`
+            const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: dataUrl }) })
+            if (!res.ok) alert(`Upload failed (${res.status}). The GIF might be too large! If you are on a VPS, increase 'client_max_body_size 50M;' in your NGINX config.`)
+            else await fetchAgents()
+          } else {
+            // Pre-creation upload
+            if (type === 'banner') setNewBannerPic(dataUrl)
+            else setNewProfilePic(dataUrl)
+          }
+        }
+        reader.readAsDataURL(file)
+        return
+      }
+
       const canvas = document.createElement('canvas')
       const img = new Image()
       img.onload = async () => {
@@ -339,15 +371,12 @@ export default function DashboardPage() {
         const dataUrl = canvas.toDataURL('image/webp', 0.8)
         
         if (type === 'user') {
-          await fetch(`${API_URL}/api/profile/picture`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: dataUrl }) })
-          setProfilePicture(dataUrl)
+          const res = await fetch(`${API_URL}/api/profile/picture`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: dataUrl }) })
+          if (res.ok) setProfilePicture(dataUrl)
         } else if (agentIdNum) {
-          const isDecoration = type === 'decoration'
-          const url = isBanner ? `${API_URL}/api/agents/${agentIdNum}/banner` : 
-                      isDecoration ? `${API_URL}/api/agents/${agentIdNum}/decoration` : 
-                      `${API_URL}/api/agents/${agentIdNum}/picture`
-          await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: dataUrl }) })
-          await fetchAgents()
+          const url = isBanner ? `${API_URL}/api/agents/${agentIdNum}/banner` : `${API_URL}/api/agents/${agentIdNum}/picture`
+          const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ image: dataUrl }) })
+          if (res.ok) await fetchAgents()
         } else {
           // Pre-creation upload
           if (isBanner) setNewBannerPic(dataUrl)
@@ -624,15 +653,25 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div style={{ padding: '0 24px 28px', position: 'relative' }}>
+                {/* Avatar — overlaps banner, absolutely positioned */}
                 <div style={{ position: 'absolute', top: -44, left: 24, cursor: 'pointer' }} onClick={() => handleAvatarUpload('agent', selectedAgent.id)}>
                   <div style={{ border: '5px solid var(--bg-card)', borderRadius: '50%', background: 'var(--bg-card)', position: 'relative', display: 'inline-block' }}>
                     <AgentAvatar src={selectedAgent.profile_picture} name={selectedAgent.name} decoration={selectedAgent.avatar_decoration} size={88} />
                     <div style={{ position: 'absolute', bottom: 4, right: 4, width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-panel)', border: '2px solid var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>✏️</div>
                   </div>
                 </div>
-                <div style={{ marginTop: 54 }}>
+
+                {/* Name row — sits to the RIGHT of the avatar using paddingLeft */}
+                <div style={{ paddingLeft: 108, paddingTop: 12, marginBottom: 4 }}>
                   <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: '-0.5px', marginBottom: 2 }}>{selectedAgent.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Somniac AI Entity · {selectedAgent.mood || 'neutral'}</div>
+                  <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                    {selectedAgent.name.toLowerCase().replace(/\s+/g, '')} • somniac/entity
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Mood: {selectedAgent.mood || 'neutral'}</div>
+                </div>
+
+                {/* Form fields — full width, below avatar */}
+                <div style={{ marginTop: 20 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Display Name</label>
@@ -661,6 +700,7 @@ export default function DashboardPage() {
                     )}
                   </div>
                 </div>
+
               </div>
             </div>
 
@@ -762,7 +802,7 @@ export default function DashboardPage() {
           <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
             <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', fontWeight: 700 }}>AC Dashboard</div>
           </div>
-          <StatePanel aiState={aiState} houseState={houseState} economy={economy} agentName={selectedAgent.name} agentPic={selectedAgent.profile_picture} agentDecoration={selectedAgent.avatar_decoration} sendCommand={sendCommand} />
+          <StatePanel aiState={aiState} houseState={houseState} economy={economy} agentName={selectedAgent.name} agentPic={selectedAgent.profile_picture} agentBanner={selectedAgent.banner_picture} agentDecoration={selectedAgent.avatar_decoration} sendCommand={sendCommand} />
         </div>
       )}
 

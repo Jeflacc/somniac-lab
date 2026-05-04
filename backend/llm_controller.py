@@ -11,13 +11,13 @@ class LLMController:
         api_key: str = "",
         model_name: str = "",
         host: str = "http://127.0.0.1:11434",
-        api_keys: list[str] = None,   # Multiple Groq keys for rotation
+        api_keys: list[str] = None,   # Multiple LLM7 keys for rotation
     ):
         self.provider = provider.lower()
         self.model_name = model_name
         self.host = host
 
-        # ── Key pool: supports multiple Groq keys ──
+        # ── Key pool: supports multiple LLM7 keys ──
         if api_keys:
             self._key_pool = [k for k in api_keys if k]
         elif api_key:
@@ -30,8 +30,8 @@ class LLMController:
         # Tracks keys exhausted for the day: key → unix timestamp when 429 hit
         self._key_exhausted: dict[str, float] = {}
 
-        if self.provider == "groq":
-            self.endpoint = "https://api.groq.com/openai/v1/chat/completions"
+        if self.provider == "llm7":
+            self.endpoint = "https://api.llm7.io/v1/chat/completions"
         else:
             self.endpoint = f"{self.host}/api/chat"
 
@@ -61,7 +61,7 @@ class LLMController:
             if time.time() - exhausted_at > 86400:
                 logging.info(f"[LLM] Beralih ke key ...{candidate[-8:]}")
                 return True
-        logging.error("[LLM] SEMUA key Groq sudah habis limit hariannya!")
+        logging.error("[LLM] SEMUA key LLM7 sudah habis limit hariannya!")
         return False
 
     # ── Session ──
@@ -84,8 +84,8 @@ class LLMController:
         chat_history: list = None,
     ):
         """
-        Berkomunikasi dengan API pilihan (Ollama/Groq) secara streaming.
-        Untuk Groq: otomatis ganti key saat 429 daily limit.
+        Berkomunikasi dengan API pilihan (Ollama/LLM7) secara streaming.
+        Untuk LLM7: otomatis ganti key saat 429 daily limit.
         """
         # 1. Static system prompt
         messages = [{"role": "system", "content": static_system_prompt}]
@@ -105,17 +105,17 @@ class LLMController:
         if self.provider == "ollama":
             payload["keep_alive"] = "1h"
 
-        if self.provider == "groq":
+        if self.provider == "llm7":
             payload["max_tokens"] = 900  # Sedikit lebih hemat — 900 token output per request
 
-        # For Groq: retry with next key on 429, max len(key_pool) attempts
-        max_attempts = len(self._key_pool) if self.provider == "groq" else 1
+        # For LLM7: retry with next key on 429, max len(key_pool) attempts
+        max_attempts = len(self._key_pool) if self.provider == "llm7" else 1
         for attempt in range(max_attempts):
             result = await self._try_request(payload)
             if result == "RATE_LIMIT_DAILY":
                 rotated = self._mark_key_exhausted()
                 if not rotated:
-                    yield "*Sigh* ... (All Groq API keys reached daily limit, try again tomorrow 😞)"
+                    yield "*Sigh* ... (All LLM7 API keys reached daily limit, try again tomorrow 😞)"
                     return
                 # Retry loop with new key
                 continue
@@ -125,7 +125,7 @@ class LLMController:
                     yield chunk
                 return
 
-        yield "*Sigh* ... (All Groq API keys reached daily limit 😞)"
+        yield "*Sigh* ... (All LLM7 API keys reached daily limit 😞)"
 
     async def _try_request(self, payload: dict):
         """
@@ -134,7 +134,7 @@ class LLMController:
         OR the string "RATE_LIMIT_DAILY" if 429 daily limit hit.
         """
         headers = {}
-        if self.provider == "groq":
+        if self.provider == "llm7":
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
@@ -146,7 +146,7 @@ class LLMController:
 
             if resp.status == 429:
                 err_text = await resp.text()
-                logging.warning(f"[LLM] 429 from Groq key ...{self.api_key[-8:]}: {err_text[:120]}")
+                logging.warning(f"[LLM] 429 from LLM7 key ...{self.api_key[-8:]}: {err_text[:120]}")
                 # Check if it's daily exhaustion (not per-minute)
                 is_daily = "day" in err_text.lower() or "daily" in err_text.lower() or "rate_limit_exceeded" in err_text.lower()
                 if is_daily:
@@ -170,13 +170,13 @@ class LLMController:
             return self._error_gen(f"Connection lost or {self.provider.capitalize()} server is down.")
 
     async def _stream_response(self, resp):
-        """Parse streaming response dari Groq (OpenAI SSE) atau Ollama (JSON lines)."""
+        """Parse streaming response dari LLM7 (OpenAI SSE) atau Ollama (JSON lines)."""
         async for line in resp.content:
             if not line:
                 continue
             line_str = line.decode("utf-8").strip()
 
-            if self.provider == "groq":
+            if self.provider == "llm7":
                 if line_str.startswith("data: "):
                     if line_str == "data: [DONE]":
                         break
