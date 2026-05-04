@@ -785,6 +785,15 @@ async def autonomous_loop():
                 trigger = False
                 reason  = ""
 
+                chat_hist = agent.state_data.get("chat_history", []) if agent.state_data else []
+                user_ignored = len(chat_hist) > 0 and chat_hist[-1]["role"] == "assistant"
+
+                # If ignored, increase sadness/stress slightly over time
+                if user_ignored and not state.is_sleeping:
+                    state.stress = min(1.0, state.stress + 0.05)
+                    state.joy = max(0.0, state.joy - 0.05)
+                    state.save_state()
+
                 if state.is_sleeping and not was_sleeping:
                     trigger = True
                     reason  = "It's your sleep schedule now. Say goodbye and go to sleep."
@@ -799,17 +808,28 @@ async def autonomous_loop():
                     if current["hunger"] > 0.8:
                         trigger = True
                         reason  = "Starving! Tell the user and ask for food/start cooking."
+                        if user_ignored:
+                            reason += " Complain that they are ignoring you while you're starving!"
                     elif current["sleepiness"] > 0.8:
-                        trigger = True
-                        reason  = "Extremely sleepy, can barely stay awake."
+                        if not user_ignored: # Don't double text just to say sleepy
+                            trigger = True
+                            reason  = "Extremely sleepy, can barely stay awake."
                     else:
                         import random
-                        if state.interaction_count > 0 and random.random() < 0.15:
-                            trigger = True
+                        # Only 2% chance to double text if lonely, otherwise 15% if normal
+                        chance = 0.02 if user_ignored else 0.15
+                        if state.interaction_count > 0 and random.random() < chance:
                             if current["libido"] > 0.6:
-                                reason = "You are feeling lonely and affectionate. Text the user to see what they are up to or just to say hi."
+                                trigger = True
+                                reason = "You are feeling lonely and affectionate."
+                                if user_ignored:
+                                    reason += " Send a double-text complaining that they are ignoring you, you miss their attention."
+                                else:
+                                    reason += " Text the user to see what they are up to or just to say hi."
                             else:
-                                reason = "You are bored. Text the user a random thought or ask how their day is going."
+                                if not user_ignored:
+                                    trigger = True
+                                    reason = "You are bored. Text the user a random thought or ask how their day is going."
 
                 if trigger and not chat_lock.locked():
                     async with chat_lock:
